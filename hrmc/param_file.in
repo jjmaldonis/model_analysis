@@ -1,0 +1,26 @@
+#parameter file opened. set a filename to # to ignore it
+Zr54Cu38Al8_1523atoms_start.xyz
+vor_params.in
+1  !starting step number
+5000.0    !starting temperature (assuming starting step is what you set it at)
+0.75    !maximum move distance
+!cut off: nxn matrix 11 21 31/ 12 22 32/ 13 23 33/  (1 is the lowest atom# species) 
+1.76 1.76 1.76
+1.76 1.76 1.76
+1.76 1.76 1.76
+#
+0	!weight of electron scattering
+0  0 !rmin_e rmax_e
+#
+0
+0  0
+# xrd_zr50_kramer_reduced.txt
+0 #3290.0	!weight of xrd gr
+0 0 #1.68  10.0
+fem_exp_jwh.txt
+1.0	 !weight of fem
+28.637     !scaling factor for exp Vk
+1 38 18 	 !# of rotations(nphi, npsi, ntheta)
+0.0305 !Q (inverse angstrom)
+1	 !fem algorithm
+13.0	 !pixel distance

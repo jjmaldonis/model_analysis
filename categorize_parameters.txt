@@ -1,0 +1,8 @@
+Crystal-like:
+    0,4,4,*
+    0,5,2,*
+Icosahedra-like:
+    0,0,12,0
+    0,2,8,2
+Mixed:
+    0,3,6,*
