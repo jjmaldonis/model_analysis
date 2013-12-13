@@ -101,7 +101,9 @@ program rmc
     if(myid .eq. 0) write(*,*) "Model filename:", trim(model_filename)
 
     beta=1./((8.6171e-05)*temperature)
-    iseed2 = 104756
+    !iseed2 = 104756
+    iseed2 = mod(t0*10000,10000.0)
+    if(myid .eq. 0) write(*,*) "Seed = ", iseed2
     use_rmc = .TRUE.
 
     call read_eam(m)
@@ -210,7 +212,7 @@ program rmc
                 accepted = .true.
                 rejects = 0
                 if(myid .eq. 0) write(*,*) "MC move accepted outright."
-                if(myid .eq. 0) write(*,*) "Chi2_vor, energy:", chi2_no_energy, te2/natoms
+                if(myid .eq. 0) write(*,*) "Chi2_vor, energy:", chi2_no_energy, te2/natoms, chi2_new
             else
                 ! Based on the random number above, even if del_chi is negative, decide
                 ! whether to move or not (statistically).
@@ -224,7 +226,7 @@ program rmc
                     accepted = .true.
                     rejects = 0
                     if(myid .eq. 0) write(*,*) "MC move accepted due to probability." ! del_chi*beta = ", del_chi*beta
-                    if(myid .eq. 0) write(*,*) "Chi2_vor, energy:", chi2_no_energy, te2/natoms
+                    if(myid .eq. 0) write(*,*) "Chi2_vor, energy:", chi2_no_energy, te2/natoms, chi2_new
                 else
                     ! Reject move
                     e2 = e1
@@ -233,6 +235,7 @@ program rmc
                     call hutch_move_atom(m,w,xx_cur, yy_cur, zz_cur)  !update hutches.
                     accepted = .false.
                     rejects = rejects + 1
+                    write(*,*) "rejects =", rejects
                     if(myid .eq. 0) write(*,*) "MC move rejected.", chi2_old, chi2_new
                 endif
             endif
@@ -242,6 +245,7 @@ program rmc
             if(rejects .ge. 500) then
                 rejects = 0
                 temperature = temperature * 2.0
+                write(*,*) "DOUBLED TEMP TO", temperature
             endif
 
             !if(num_accepted .eq. 20) then
