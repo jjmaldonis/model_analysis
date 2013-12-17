@@ -1,6 +1,16 @@
+
+# Categorizes the voronoi polyhedra according to the input parameter file, 
+# which must be the first arg passed to this script.
+# The second arg must be a _index.out file.
+# Output is printed to screen.
+
 import sys
 
 def main():
+    print("Arg 1:  input param file detailing each voronoi 'structure'.\nShould be of the form:\nCrystal:\n    0,2,8,*\n\nArg2: an _index.out file.\n\nOutput is printed to screen.")
+    if(len(sys.argv) <= 2): sys.exit("\nERROR! Fix your inputs!\n")
+
+    # Open _index.out file.
     with open( sys.argv[2]) as f:
         lines = [line.split() for line in f]
     for line in lines:

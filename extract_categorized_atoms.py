@@ -1,6 +1,15 @@
+
+# First arg is file from categorize_vor.py
+# Second arg is model file (normal xyz format)
+# Output is printed to screen
+# Output is a sorted list of which atom is which
+
 import sys
 
 def main():
+    print("Arg 1: output from categorize_vor.py\nArg 2: model file in normal xyz format\n\nOutput printed to screen.\n")
+    if(len(sys.argv) <= 1): sys.exit("ERROR! Fix your inputs!")
+
     f = open(sys.argv[1],'r')
     line = f.readline().strip()
     while(line != 'Outputs:'):
@@ -8,6 +17,8 @@ def main():
     line = f.readline().strip() # Total number of atoms categorized: ###
 
 
+    # Creates a dictionary where each key contains values
+    # that are the atom #s for that category.
     line = f.readline().strip() # Prep line
     cats = {}
     while True:
@@ -26,18 +37,24 @@ def main():
         atoms[key] = []
 
     mf = open(sys.argv[2],'r')
-    ln = 0
+    ln = -2
     for line in mf:
         ln = ln + 1
-        for key in cats:
-            if(ln in cats[key]):
-                atoms[key].append(line)
+        if(ln > 0): # skip top two lines
+            for key in cats:
+                if(ln in cats[key]):
+                    atoms[key].append(line)
 
-    outf = open('temp.out', 'w')
     for key in atoms:
-        outf.write(key+'\n')
+        print(key)
         for line in atoms[key]:
-            outf.write(line.strip() + '\n')
+            print(line.strip())
+
+    #outf = open('temp.out', 'w')
+    #for key in atoms:
+    #    outf.write(key+'\n')
+    #    for line in atoms[key]:
+    #        outf.write(line.strip() + '\n')
 
 if __name__ == "__main__":
     main()
