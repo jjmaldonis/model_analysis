@@ -29,15 +29,9 @@ class AtomGraph(object):
                 # Neighbor syntax: (neighbor atom, dist to main atom)
                 self.neighs[atom][i] = (self.neighs[atom][i],hd.dist(atom,self.neighs[atom][i]))
 
-        randstr = ''.join(random.choice(string.ascii_lowercase + string.ascii_uppercase + string.digits) for x in range(8))
-        opf = open(randstr+'.vparm','w')
-        opf.write(gen_paramfile.gen(modelfile,cutoff))
-        opf.close()
-
         vor_instance = Vor()
-        vor_instance.runall(randstr+'.vparm', modelfile)
+        vor_instance.runall(cutoff,modelfile)
         index = vor_instance.get_index()
-        os.remove(randstr+'.vparm')
         
         vorcats = VorCats('categorize_parameters.txt')
         vorcats.save(index)
@@ -84,6 +78,7 @@ class AtomGraph(object):
 
 def main():
     cluster_type = 'Crystal-like'
+    #cluster_type = 'Icosahedra-like'
     ag = AtomGraph(sys.argv[1],3.5)
 
     connections = {}
@@ -143,8 +138,12 @@ def main():
         if cluster != [] and cluster not in clusters:
             clusters.append(cluster)
     
+    i = 1
     for cluster in clusters:
-        print("Unique cluster: {0}".format(cluster))
+        print("Unique cluster {0}:".format(i))
+        i += 1
+        for atom in cluster:
+            print(atom.convert_to_sym())
 
         
 

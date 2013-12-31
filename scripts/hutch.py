@@ -1,5 +1,6 @@
 import math
 import sys
+import znum2sym
 from atom import Atom
 
 class Hutch(object):
@@ -37,7 +38,10 @@ class Hutch(object):
         for i, item in enumerate(content):
             content[i] = content[i].split()
             id = i
-            znum = eval(content[i][0])
+            try:
+                znum = eval(content[i][0])
+            except:
+                znum = znum2sym.sym2z(content[i][0])
             x = eval(content[i][1])
             y = eval(content[i][2])
             z = eval(content[i][3])
@@ -144,6 +148,14 @@ class Hutch(object):
         y2 = (atom1.coord[1] - atom2.coord[1])**2
         z2 = (atom1.coord[2] - atom2.coord[2])**2
         return math.sqrt(x2+y2+z2)
+    def get_all_dists(self):
+        dists = []
+        for atomi in self.atoms:
+            for atomj in self.atoms[self.atoms.index(atomi)+1:]:
+                dists.append([atomi,atomj,self.dist(atomi,atomj)])
+        return dists
+
+        
 
     def get_all_atoms(self):
         return self.atoms
