@@ -107,12 +107,16 @@ program main
         stop
     endif
 
+    !write(*,*) "Reading from param file:"
     read(4,*)
+    !write(*,*) "Reading number of atom types"
     read(4,*) nsp
     allocate(sp_natoms(nsp))
     read(4,*)
+    !write(*,*) "Reading nsteps, natoms, natoms_species", nsp
     read(4,*) ndata, natoms, sp_natoms
     read(4,*)
+    !write(*,*) "Reading world size, cutoff"
     read(4,*) world_size, rcut
 
     allocate(pos(natoms,3))
@@ -153,6 +157,8 @@ program main
     do jj=1, ndata
         ! Read in atoms from XYZ file
         atomtype_num = 0
+        read(2,*) ! Comment line
+        read(2,*) ! box size line
         do ii = 1, natoms
             read(2,*) id(ii), pos(ii,1),pos(ii,2),pos(ii,3)   ! Watch input model format -JWH
             ! Find out if we have a new atom type using this loop
@@ -326,7 +332,7 @@ subroutine vtanal!(maxcan, maxver, maxepf, natoms, world_size, noi, nc, nf, ne, 
                 !rcutsq=(rcut*2*rsp(id(i))/(rsp(1)+rsp(2)))**2 ! Commented by Hao and JWH
 
                 if ( rijsq .lt. rcutsq ) then
-                    write(*,*) pos(i,1), pos(i,2), pos(i,3), pos(j,1), pos(j,2), pos(j,3), rijsq
+                    !write(*,*) pos(i,1), pos(i,2), pos(i,3), pos(j,1), pos(j,2), pos(j,3), rijsq
                     ic = ic + 1
                     if(ic.gt.maxcan)then
                         write(*,*)ic, maxcan
@@ -745,7 +751,7 @@ subroutine outvt!(natoms, nsp, id, nedges, nablst, nnabsp, nnab, indx3, indx4, i
         84     format(A2,3f16.10)
         82     FORMAT(I2,3F16.10)
         83     format(25I4)
-        write(3,"(6I6,8I3,F8.4)")i,id(i),nnab(i),nnabsp(i,1),nnabsp(i,2),nnabsp(i,3),indx3(i),indx4(i),indx5(i),indx6(i),indx7(i),indx8(i),indx9(i),indx10(i),vvol(i)
+        write(3,"(6I6,8I3,F8.4)")i-1,id(i),nnab(i),nnabsp(i,1),nnabsp(i,2),nnabsp(i,3),indx3(i),indx4(i),indx5(i),indx6(i),indx7(i),indx8(i),indx9(i),indx10(i),vvol(i)
         if(id(i).eq.idct)then
             icnlst(nnab(i))=icnlst(nnab(i))+1
             do iind=1,nind

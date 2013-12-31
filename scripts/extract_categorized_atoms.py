@@ -2,7 +2,7 @@
 # First arg is file from categorize_vor.py
 # Second arg is model file (normal xyz format)
 # Output is printed to screen
-# Output is a sorted list of which atom is which
+# Output is a sorted list of which atom is which VP type
 
 import sys
 
