@@ -12,8 +12,10 @@ class Vor(object):
         """ constructor """
         super(Vor,self).__init__()
 
-    def run(self,cutoff, modelfile, outbase=None):
+    def run(self, modelfile, cutoff, outbase=None):
         """ Runs vor from command line. """
+
+        if(type(cutoff) == type('hi')): cutoff = float(cutoff)
 
         if outbase is None:
             self.randstr = ''.join(random.choice(string.ascii_lowercase + string.ascii_uppercase + string.digits) for x in range(8))
@@ -24,7 +26,7 @@ class Vor(object):
         opf.write(gen_paramfile.gen(modelfile,cutoff))
         opf.close()
 
-        p = subprocess.Popen(['vor',self.randstr+'.vparm',modelfile,self.randstr], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        p = subprocess.Popen(['/export/home/jjmaldonis/OdieCode/vor/vor',self.randstr+'.vparm',modelfile,self.randstr], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.poutput = p.stdout.read()
         self.perr = p.stderr.read()
         self.preturncode = p.wait()
@@ -50,8 +52,8 @@ class Vor(object):
     def get_index(self,):
         return self.index
 
-    def runall(self,cutoff,modelfile):
-        self.run(cutoff,modelfile)
+    def runall(self,modelfile,cutoff):
+        self.run(modelfile,cutoff)
         if(self.preturncode != 0):
             self.del_files(self.randstr)
             raise Exception("Voronoi.f90 failed! "+self.perr)
@@ -62,6 +64,7 @@ class Vor(object):
 
 def main():
     vorrun = Vor()
+    # sys.argv = [modelfile, cutoff, outbase (optional)]
     if(len(sys.argv) == 3):
         vorrun.run(sys.argv[1],sys.argv[2])
     elif(len(sys.argv) == 4):
@@ -69,13 +72,13 @@ def main():
     else:
         sys.exit("Wrong number of inputs.")
     vorrun.save(vorrun.randstr)
-    for line in vorrun.index: print(line.strip())
-    print(vorrun.statheader.strip())
-    for line in vorrun.stat: print(line.strip())
+    #for line in vorrun.index: print(line.strip())
+    #print(vorrun.statheader.strip())
+    #for line in vorrun.stat: print(line.strip())
     print(vorrun.poutput)
     print("Return code: "+str(vorrun.preturncode))
     print("Outbase: "+vorrun.randstr)
-    vorrun.del_files(vorrun.randstr)
+    #vorrun.del_files(vorrun.randstr)
 
 
 if __name__ == "__main__":

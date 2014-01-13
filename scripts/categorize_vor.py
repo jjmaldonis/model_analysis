@@ -37,6 +37,10 @@ class VorCats(object):
                 self.vp_dict[current_entry].append(vps)
             else:
                 sys.exit("ERROR IN INPUT VP PARAMETERS. STOPPING.")
+        #for key in self.vp_dict:
+        #    print(key)
+        #    for item in self.vp_dict[key]:
+        #        print(item)
 
     def save(self,indexes):
         indexes = [line.strip().split() for line in indexes]
@@ -56,8 +60,9 @@ class VorCats(object):
         self.atom_dict = {}
         for key in self.vp_dict:
             self.atom_dict[key] = []
+        self.atom_dict["Undef:"] = []
 
-        # Sort atoms
+        # Sort atoms, putting them in their correct dictionary place
         for line in indexes:
             for key in self.vp_dict:
                 for vps in self.vp_dict[key]:
@@ -67,6 +72,27 @@ class VorCats(object):
                             found = False
                     if(found):
                         self.atom_dict[key].append(line)
+            found = False
+            for key in self.vp_dict:
+                if line in self.atom_dict[key]:
+                    found = True
+            if not found:
+                self.atom_dict["Undef:"].append(line)
+
+    def save_vps(self,model):
+        """ saves the voronoi polyhedra for each atom to the atom in the model
+            also saves the vp_dict to 'model' """
+        for i,atomi in enumerate(model.atoms):
+            found = False
+            for key in self.atom_dict:
+                for line in self.atom_dict[key]:
+                    if line[0] == i:
+                        vp = tuple(line[6:14]) # This saves n3 - n10
+                        found = True
+            if not found:
+                raise Exception("Error! Couldn't find an atom when trying to save it's VP.")
+            model.atoms[i].set_vp(vp)
+        model.save_vp_dict(self.vp_dict)
 
     def get_atom_dict(self):
         """ In the form:
@@ -92,7 +118,7 @@ class VorCats(object):
         print("Total number of atoms categorized: " + str(sum))
         self.atom_dict = self.atom_dict
         for key in self.atom_dict:
-            print(key + ' ' + str(len(self.atom_dict[key])))
+            print(key + ' ' + str(len(self.atom_dict[key])) + ' ' + str(round(len(self.atom_dict[key])/float(sum)*100,1))+'%')
             for line in self.atom_dict[key]:
                 #print(line)
                 for i in range(0,len(line)):

@@ -6,6 +6,7 @@ import gen_paramfile
 from vor import Vor
 from categorize_vor import VorCats
 from hutch import Hutch
+from model import Model
 import sys
 
 class AtomGraph(object):
@@ -14,54 +15,53 @@ class AtomGraph(object):
 
     def __init__(self,modelfile,cutoff):
         """ Constructor
-        @param hd is the hutch dictionary implemented in hutch.py
         @param cutoff is the cutoff we will use to determine neighbors """
 
         super(AtomGraph,self).__init__()
         
-        hd = Hutch(modelfile)
-        self.atoms = hd.get_all_atoms()
-
-        self.neighs = {}
-        for atom in self.atoms:
-            self.neighs[atom] = hd.get_atoms_in_cutoff(atom,cutoff)
-            for i in range(0,len(self.neighs[atom])):
-                # Neighbor syntax: (neighbor atom, dist to main atom)
-                self.neighs[atom][i] = (self.neighs[atom][i],hd.dist(atom,self.neighs[atom][i]))
+        self.model = Model(modelfile)
+        self.model.generate_neighbors(cutoff)
 
         vor_instance = Vor()
-        vor_instance.runall(cutoff,modelfile)
+        vor_instance.runall(modelfile,cutoff)
         index = vor_instance.get_index()
         
         vorcats = VorCats('categorize_parameters.txt')
         vorcats.save(index)
+        vorcats.save_vps(self.model)
         
         self.vp_dict = vorcats.get_vp_dict()
 
-        sorted_atoms = vorcats.get_atom_dict()
-        self.atom_dict = sorted_atoms
+        self.atom_dict = vorcats.get_atom_dict()
+        #for key in self.atom_dict:
+        #    print("{0} {1}".format(key,self.atom_dict[key]))
         for key in self.atom_dict:
             for i in range(0,len(self.atom_dict[key])):
                 self.atom_dict[key][i] = self.atom_dict[key][i][0]
+        #for key in self.atom_dict:
+        #    print("{0} {1}".format(key,len(self.atom_dict[key])))
+        #    #print("{0} {1}".format(key,self.atom_dict[key]))
 
-        self.values = {}
-        for atom in self.atoms:
-            for key in self.atom_dict:
-                if atom.id in self.atom_dict[key]:
-                    self.values[atom] = key[:-1]
-            if atom not in self.values:
-                self.values[atom] = "Undef"
+        #self.values = {}
+        #for atom in self.model.atoms:
+        #    for key in self.atom_dict:
+        #        if atom.id in self.atom_dict[key]:
+        #            self.values[atom] = key[:-1]
+        #    if atom not in self.values:
+        #        print("CAREFUL! SOMETHING WENT WRONG!")
+        #        #self.values[atom] = "Undef"
+        #for key in self.values:
+        #    print("{0}: {1}".format(key,self.values[key]))
 
-    def get_vp_type(self,atom):
-        return self.values[atom]
+
     def get_neighs(self,atom):
-        return self.neighs[atom]
+        return self.model.neighs[atom]
 
     def get_common_neighs(self,atom,type):
-        neighs = self.neighs[atom]
+        neighs = self.get_neighs(atom)
         list = []
-        for atom,dist in neighs:
-            if self.get_vp_type(atom) == type:
+        for atom in neighs:
+            if atom.get_vp_type(self.model.vp_dict) == type:
                 list.append(atom)
         return list
 
@@ -72,84 +72,84 @@ class AtomGraph(object):
                 comm_neighs.remove(atom)
         return comm_neighs
 
-    def get_all_atoms(self):
-        return self.atoms
+    def get_clusters(self,cluster_type):
+        connections = {}
+        #print("Connections:")
+        for atom in self.model.atoms:
+            connections[atom] = self.get_common_neighs(atom,cluster_type)
+            #print("Atom {0}: {1}".format(atom,connections[atom]))
+
+        clusters = []
+
+        # Find an atom of type cluster_type
+        atoms = self.model.atoms
+        for atom in self.atom_dict[cluster_type+':']:
+            start_atom = atoms[atom] # atom represents the id in for this format - it's an int! not an atom
+        
+            visited = {start_atom:True}
+
+            neighs = self.get_unvisited_common_neighs(start_atom,cluster_type,visited)
+            # neighs now contains all the neighbors of start_atom that have the same vp type as it
+            # and that we have not visited already.
+
+            paths = [] # this will contain all possible paths we find!
+            path = [start_atom] # this will contain our current path
+            queue = connections[start_atom]
+            here = False
+            prepop = -1
+            while(len(path)):
+                for atom in visited:
+                    if atom in queue and visited[atom]:
+                        queue.remove(atom)
+                if(len(queue)):
+                    path.append(queue[0])
+                    visited[queue[0]] = True
+                    queue = connections[queue[0]]
+                    here = True
+                else:
+                    if(here):
+                        #print(path)
+                        paths.append(path[:])
+                    #else:
+                    #    print("Not including: {0}".format(path))
+                    here = False
+                    if(type(prepop) != type(-1)):
+                        visited[prepop] = False
+                    #
+                    prepop = path.pop()
+                    if not len(path):
+                        break
+                    queue = connections[path[-1]]
+            cluster = []
+            for pathi in paths:
+                #print(pathi)
+                for atom in pathi:
+                    if atom not in cluster:
+                        cluster.append(atom)
+            cluster.sort()
+            if cluster != [] and cluster not in clusters:
+                clusters.append(cluster)
+
+        return clusters
+ 
 
 
 def main():
     cluster_type = 'Crystal-like'
     #cluster_type = 'Icosahedra-like'
+
     ag = AtomGraph(sys.argv[1],3.5)
-
-    connections = {}
-    #print("Connections:")
-    for atom in ag.get_all_atoms():
-        connections[atom] = ag.get_common_neighs(atom,cluster_type)
-        #print("Atom {0}: {1}".format(atom,connections[atom]))
-
-    clusters = []
-
-    # Find an atom of type cluster_type
-    atoms = ag.get_all_atoms()
-    for atom in ag.atom_dict[cluster_type+':']:
-        start_atom = atoms[atom] # atom represents the id in for this format - it's an int! not an atom
-    
-        visited = {start_atom:True}
-
-        neighs = ag.get_unvisited_common_neighs(start_atom,cluster_type,visited)
-        # neighs now contains all the neighbors of start_atom that have the same vp type as it
-        # and that we have not visited already.
-
-        paths = [] # this will contain all possible paths we find!
-        path = [start_atom] # this will contain our current path
-        queue = connections[start_atom]
-        here = False
-        prepop = -1
-        while(len(path)):
-            for atom in visited:
-                if atom in queue and visited[atom]:
-                    queue.remove(atom)
-            if(len(queue)):
-                path.append(queue[0])
-                visited[queue[0]] = True
-                queue = connections[queue[0]]
-                here = True
-            else:
-                if(here):
-                    #print(path)
-                    paths.append(path[:])
-                #else:
-                #    print("Not including: {0}".format(path))
-                here = False
-                if(prepop != -1):
-                    visited[prepop] = False
-                #
-                prepop = path.pop()
-                if not len(path):
-                    break
-                queue = connections[path[-1]]
-        cluster = []
-        for pathi in paths:
-            #print(pathi)
-            for atom in pathi:
-                if atom not in cluster:
-                    cluster.append(atom)
-        cluster.sort()
-        if cluster != [] and cluster not in clusters:
-            clusters.append(cluster)
-    
+   
+    clusters = ag.get_clusters(cluster_type)
     i = 1
     for cluster in clusters:
-        print("Unique cluster {0}:".format(i))
+        print("Unique cluster {0}: {1} atoms".format(i,len(cluster)))
         i += 1
         for atom in cluster:
-            print(atom.convert_to_sym())
+            print(atom.vesta())
 
-        
+    #print(ag.model.atoms[0].get_vp_type(ag.model.vp_dict))
 
-
-
-    
 
 if __name__ == "__main__":
     main()
