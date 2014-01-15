@@ -20,7 +20,7 @@ class AtomGraph(object):
         super(AtomGraph,self).__init__()
         
         self.model = Model(modelfile)
-        self.model.generate_neighbors(cutoff)
+        self.model.generate_neighbors(2.65)
 
         vor_instance = Vor()
         vor_instance.runall(modelfile,cutoff)
@@ -57,38 +57,40 @@ class AtomGraph(object):
     def get_neighs(self,atom):
         return self.model.neighs[atom]
 
-    def get_common_neighs(self,atom,type):
+    def get_common_neighs(self,atom,*types):
         neighs = self.get_neighs(atom)
-        list = []
-        for atom in neighs:
-            if atom.get_vp_type(self.model.vp_dict) == type:
-                list.append(atom)
+        list = [ atom for atom in neighs if atom.get_vp_type(self.model.vp_dict) in types ]
+        #list = []
+        #for atom in neighs:
+        #    if atom.get_vp_type(self.model.vp_dict) in types:
+        #        list.append(atom)
         return list
 
-    def get_unvisited_common_neighs(self,atom,type,visited):
-        comm_neighs = self.get_common_neighs(atom,type)
+    def get_unvisited_common_neighs(self,atom,visited,*types):
+        comm_neighs = self.get_common_neighs(atom,*types)
         for atom in visited:
             if visited[atom] and atom in comm_neighs:
                 comm_neighs.remove(atom)
         return comm_neighs
 
-    def get_clusters(self,cluster_type):
+    def get_clusters(self,*cluster_types):
         connections = {}
         #print("Connections:")
         for atom in self.model.atoms:
-            connections[atom] = self.get_common_neighs(atom,cluster_type)
+            connections[atom] = self.get_common_neighs(atom,*cluster_types)
             #print("Atom {0}: {1}".format(atom,connections[atom]))
 
         clusters = []
 
-        # Find an atom of type cluster_type
+        # Find an atom of type cluster_types
         atoms = self.model.atoms
-        for atom in self.atom_dict[cluster_type+':']:
+        temp_atoms = [x for ctype in cluster_types for x in self.atom_dict[ctype+':'] ]
+        for atom in temp_atoms:
             start_atom = atoms[atom] # atom represents the id in for this format - it's an int! not an atom
         
             visited = {start_atom:True}
 
-            neighs = self.get_unvisited_common_neighs(start_atom,cluster_type,visited)
+            neighs = self.get_unvisited_common_neighs(start_atom,visited,cluster_types)
             # neighs now contains all the neighbors of start_atom that have the same vp type as it
             # and that we have not visited already.
 
@@ -120,16 +122,11 @@ class AtomGraph(object):
                     if not len(path):
                         break
                     queue = connections[path[-1]]
-            cluster = []
-            for pathi in paths:
-                #print(pathi)
-                for atom in pathi:
-                    if atom not in cluster:
-                        cluster.append(atom)
+            cluster = [ atom  for pathi in paths for atom in pathi ]
+            cluster = list(set(cluster)) # remove duplicates
             cluster.sort()
             if cluster != [] and cluster not in clusters:
                 clusters.append(cluster)
-
         return clusters
  
 

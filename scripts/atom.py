@@ -44,6 +44,14 @@ class Atom(object):
             return self.z + '\t' + str(self.coord[0]) + '\t' + str(self.coord[1]) + '\t' + str(self.coord[2])
     def ourxyz(self):
         return str(self.z)+'\t'+str(self.coord[0])+'\t'+str(self.coord[1])+'\t'+str(self.coord[2])
+    def frac11(self,lx,ly,lz):
+        """ returns the coordinatese in fractional form between -1 and 1
+            inputs are the world sizes """
+        return str(self.coord[0]/lx*2)+'\t'+str(self.coord[1]/ly*2)+'\t'+str(self.coord[2]/lz*2)
+    def frac01(self,lx,ly,lz):
+        """ returns the coordinatese in fractional form between 0 and 1
+            inputs are the world sizes """
+        return str(self.coord[0]/lx)+'\t'+str(self.coord[1]/ly)+'\t'+str(self.coord[2]/lz)
         
     def set_vp(self,vp):
         self.vp = vp

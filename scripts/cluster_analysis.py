@@ -1,5 +1,6 @@
 
 import sys
+from model import Model
 from hutch import Hutch
 from atom import Atom
 from atom_graph import AtomGraph
@@ -23,7 +24,7 @@ def main():
     modelfile = sys.argv[1]
     cutoff = float(sys.argv[2])
     ag = AtomGraph(modelfile,cutoff)
-    clusters = ag.get_clusters("Crystal-like")
+    clusters = ag.get_clusters("Icosahedra-like")
 
     ## Let's just get the biggest one for now.
     ## Comment this section to get them all.
@@ -35,26 +36,44 @@ def main():
     #clusters = [clusters[i]]
 
     orig_clusters = clusters[:]
+    # Print orig clusters
+    j = 0
     for i,cluster in enumerate(clusters):
-        new_clust = []
-        for atom in ag.model.atoms:
-            if( nnnic(atom,ag.model,clusters[i]) >= 4 ):
-                new_clust.append(atom)
-        for atom in clusters[i]:
-            if atom not in new_clust:
-                new_clust.append(atom)
+        print("Orig cluster {0} contains {1} atoms.".format(i,len(cluster)))
+        #for atom in cluster:
+        #    if atom not in orig_clusters[i]:
+        #        #print("{0} {1}".format(atom.vesta(),atom.vp))
+        #        print(atom.vesta())
+        #        j += 1
+        #    else:
+        #        print(atom.vesta())
+        # Save cluster files
+        cluster_model = Model("Orig cluster {0} contains {1} atoms.".format(i,len(cluster)),ag.model.lx, ag.model.ly, ag.model.lz, cluster)
+        cluster_model.write_cif('cluster{0}.cif'.format(i))
+
+    # Expand the clusters
+    for i,cluster in enumerate(clusters):
+        new_clust = [ atom for atom in ag.model.atoms if atom in clusters[i] or ( nnnic(atom,ag.model,clusters[i]) >= 4 ) ]
+        new_clust = list(set(new_clust))
         clusters[i] = new_clust[:]
 
     j = 0
     for i,cluster in enumerate(clusters):
         print("New, bigger cluster {0} contains {1} atoms.".format(i,len(cluster)))
-        for atom in cluster:
-            if atom not in orig_clusters[i]:
-                print("{0} {1}".format(atom.vesta(),atom.vp))
-                j += 1
-            else:
-                print(atom.vesta())
-    print(j)
+        #for atom in cluster:
+        #    if atom not in orig_clusters[i]:
+        #        #print("{0} {1}".format(atom.vesta(),atom.vp))
+        #        print(atom.vesta())
+        #        j += 1
+        #    else:
+        #        print(atom.vesta())
+        # Save cluster files
+        cluster_model = Model("New, bigger cluster {0} contains {1} atoms.".format(i,len(cluster)),ag.model.lx, ag.model.ly, ag.model.lz, cluster)
+        cluster_model.write_cif('cluster{0}.big.cif'.format(i))
+
+    #largest = max([x for x in clusters],key=len)
+    #cluster_model = Model("New,bigger cluster contains {0} atoms.".format(len(largest)),ag.model.lx, ag.model.ly, ag.model.lz, largest)
+    #cluster_model.write_cif('cluster.largest.cif')
 
                 
 

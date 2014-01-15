@@ -11,7 +11,7 @@ class GradientGraph(object):
 
     def generate_map(self,cutoff,modelfile):
         vor_instance = Vor()
-        vor_instance.runall(cutoff,modelfile)
+        vor_instance.runall(modelfile,cutoff)
         index = vor_instance.get_index()
 
         icofrac = []
@@ -46,7 +46,7 @@ class GradientGraph(object):
         atoms = [atom.convert_to_sym() for i,atom in enumerate(atoms)]
 
         for atom in atoms:
-            print atom
+            print atom.vesta()
 
 def main():
     gg = GradientGraph()

@@ -15,7 +15,9 @@ class Vor(object):
     def run(self, modelfile, cutoff, outbase=None):
         """ Runs vor from command line. """
 
-        if(type(cutoff) == type('hi')): cutoff = float(cutoff)
+        if(type(cutoff) == type('hi')): 
+            print(cutoff)
+            cutoff = float(cutoff)
 
         if outbase is None:
             self.randstr = ''.join(random.choice(string.ascii_lowercase + string.ascii_uppercase + string.digits) for x in range(8))
@@ -30,6 +32,10 @@ class Vor(object):
         self.poutput = p.stdout.read()
         self.perr = p.stderr.read()
         self.preturncode = p.wait()
+        if(self.preturncode != 0):
+            self.del_files(self.randstr)
+            raise Exception("Voronoi.f90 failed! "+self.perr)
+        print("Voronoi.f90 exit status: "+str(self.preturncode))
 
     def save(self,outbase):
         """ Saves to memory the stat and index .out files with base 'outbase' """
@@ -54,17 +60,14 @@ class Vor(object):
 
     def runall(self,modelfile,cutoff):
         self.run(modelfile,cutoff)
-        if(self.preturncode != 0):
-            self.del_files(self.randstr)
-            raise Exception("Voronoi.f90 failed! "+self.perr)
         self.save(self.randstr)
         self.del_files(self.randstr)
-        print("Voronoi.f90 exit status: "+str(self.preturncode))
 
 
 def main():
     vorrun = Vor()
     # sys.argv = [modelfile, cutoff, outbase (optional)]
+    print(sys.argv)
     if(len(sys.argv) == 3):
         vorrun.run(sys.argv[1],sys.argv[2])
     elif(len(sys.argv) == 4):

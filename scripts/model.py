@@ -1,11 +1,19 @@
 
 from atom import Atom
 from hutch import Hutch
+import znum2sym
 import sys
 import math
 
 class Model(object):
-    """ xyz model file class """
+    """ xyz model file class 
+    functions:
+        write_our_xyz(outfile)
+        write_cif(outfile)
+        generate_neighbors(cutoff)
+        get_atoms_in_cutoff(atom,cutoff)
+        nearest_neigh(atom)
+        save_vp_dict(vp_dict) """
     
     def __init__(self, *args, **kwargs):
         """ sets:
@@ -14,7 +22,10 @@ class Model(object):
                 self.ly
                 self.lz
                 self.atoms
-                self.natoms """
+                self.natoms
+                self.atomtypes
+                self.natomtypes
+                self.natomtype_list """
 
         super(Model,self).__init__()
         if(len(args) == 1):
@@ -34,13 +45,25 @@ class Model(object):
             raise Exception("Unknown input parameters to Model()!")
         self.hutch = Hutch(self)
 
+        self.atomtypes = []
+        self.natomtypes = 0
+        self.natomtype_list = []
+        for atom in self.atoms:
+            if atom.z not in self.atomtypes:
+                self.atomtypes.append(atom.z)
+                self.natomtypes += 1
+                self.natomtype_list.append(1)
+            else:
+                self.natomtype_list[self.atomtypes.index(atom.z)] += 1
+
 
     def read_xyz(self,modelfile):
         with open(modelfile) as f:
             content = f.readlines()
 
         self.comment = content.pop(0) # Comment line
-        content.pop(-1) # '-1' line
+        if('-1' in content[-1] and '.' not in content[-1]): # '-1' line
+            content.pop(-1)
         self.lx,self.ly,self.lz = tuple([float(x) for x in content.pop(0).strip().split()])
 
         self.natoms = len(content)
@@ -57,6 +80,8 @@ class Model(object):
         self.atoms = []
         for i,atom in enumerate(content):
             self.atoms.append(Atom(i,atom[0],atom[1],atom[2],atom[3]))
+            if type(self.atoms[i].z) == type('hi'):
+                self.atoms[i].z = znum2sym.sym2z(self.atoms[i].z)
 
     def write_our_xyz(self,outfile):
         of = open(outfile,'w')
@@ -66,6 +91,31 @@ class Model(object):
             of.write(atom.ourxyz()+'\n')
         of.write('-1')
         of.close()
+
+    def write_cif(self,outfile):
+        of = open(outfile,'w')
+        of.write('_pd_phase_name\t'+self.comment+'\n')
+        of.write('_cell_length_a '+str(self.lx)+'\n')
+        of.write('_cell_length_b '+str(self.ly)+'\n')
+        of.write('_cell_length_c '+str(self.lz)+'\n')
+        of.write('_cell_angle_alpha 90\n_cell_angle_beta 90\n_cell_angle_gamma 90\n')
+        of.write('_symmetry_space_group_name_H-M         \'P 1\'\n_symmetry_Int_Tables_number            1\n\n')
+        of.write('loop_\n_symmetry_equiv_pos_as_xyz\n   \'x, y, z\'\n\n')
+        of.write('loop_\n   _atom_site_label\n   _atom_site_occupancy\n   _atom_site_fract_x\n   _atom_site_fract_y\n   _atom_site_fract_z\n   _atom_site_adp_type\n   _atom_site_B_iso_or_equiv\n   _atom_site_type_symbol\n')
+
+        atomtypes = []
+        for i in self.atomtypes:
+            atomtypes.append(0)
+        for atom in self.atoms:
+            # Get which atom type we have:
+            atomtype = self.atomtypes.index(atom.z)
+            atomtypes[atomtype] += 1
+            #print(atomtypes)
+            of.write('   '+znum2sym.z2sym(atom.z)+str(atomtypes[atomtype])+'\t1.0\t'+str(atom.coord[0]/self.lx+0.5)+'\t'+str(atom.coord[1]/self.ly+0.5)+'\t'+str(atom.coord[2]/self.lz+0.5)+'\tBiso\t1.000000\t'+znum2sym.z2sym(atom.z)+'\n')
+        of.write('\n')
+        of.close()
+
+    
         
     def add_atom(self,atom):
         self.atoms.append(atom)
@@ -200,12 +250,15 @@ class Model(object):
 
 def main():
     m = Model(sys.argv[1])
-    dists = []
-    for atom in m.atoms:
-        dists.append(m.dist(atom,m.nearest_neigh(atom)))
-    print(sum(dists)/len(dists))
-    print(max(dists))
-    print(min(dists))
+    m.write_cif(sys.argv[1][:-3]+'cif')
+    #m.write_our_xyz(sys.argv[1][:sys.argv[1].rindex('.')]+'.our.xyz')
+
+    #dists = []
+    #for atom in m.atoms:
+    #    dists.append(m.dist(atom,m.nearest_neigh(atom)))
+    #print(sum(dists)/len(dists))
+    #print(max(dists))
+    #print(min(dists))
 
 if __name__ == "__main__":
     main()

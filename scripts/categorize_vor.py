@@ -141,6 +141,7 @@ class VorCats(object):
 
 
 def main():
+    # sys.argv = [categorize_parameters.txt, *_index.out]
     if(len(sys.argv) <= 2): sys.exit("\nERROR! Fix your inputs!\n\nArg 1:  input param file detailing each voronoi 'structure'.\nShould be of the form:\nCrystal:\n    0,2,8,*\n\nArg2: an _index.out file.\n\nOutput is printed to screen.")
     vor_cats = VorCats(sys.argv[1])
     vor_cats.load_index_file(sys.argv[2])
