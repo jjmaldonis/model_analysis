@@ -24,7 +24,7 @@ def main():
     modelfile = sys.argv[1]
     cutoff = float(sys.argv[2])
     ag = AtomGraph(modelfile,cutoff)
-    clusters = ag.get_clusters("Icosahedra-like")
+    clusters = ag.get_clusters('Icosahedra-like','Mixed')
 
     ## Let's just get the biggest one for now.
     ## Comment this section to get them all.

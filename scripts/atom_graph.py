@@ -1,3 +1,4 @@
+from pprint import pprint
 import os
 import time
 import random
@@ -20,7 +21,12 @@ class AtomGraph(object):
         super(AtomGraph,self).__init__()
         
         self.model = Model(modelfile)
-        self.model.generate_neighbors(2.65)
+        self.model.generate_neighbors(3.5)
+        self.model.generate_coord_numbers()
+        print('Coordination numbers:')
+        pprint(self.model.coord_numbers)
+        print('Bond statistics:')
+        pprint(self.model.bonds)
 
         vor_instance = Vor()
         vor_instance.runall(modelfile,cutoff)
@@ -137,13 +143,13 @@ def main():
 
     ag = AtomGraph(sys.argv[1],3.5)
    
-    clusters = ag.get_clusters(cluster_type)
-    i = 1
-    for cluster in clusters:
-        print("Unique cluster {0}: {1} atoms".format(i,len(cluster)))
-        i += 1
-        for atom in cluster:
-            print(atom.vesta())
+    #clusters = ag.get_clusters(cluster_type)
+    #i = 1
+    #for cluster in clusters:
+    #    print("Unique cluster {0}: {1} atoms".format(i,len(cluster)))
+    #    i += 1
+    #    for atom in cluster:
+    #        print(atom.vesta())
 
     #print(ag.model.atoms[0].get_vp_type(ag.model.vp_dict))
 

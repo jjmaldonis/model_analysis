@@ -4,6 +4,7 @@ from hutch import Hutch
 import znum2sym
 import sys
 import math
+import masses
 
 class Model(object):
     """ xyz model file class 
@@ -24,14 +25,17 @@ class Model(object):
                 self.atoms
                 self.natoms
                 self.atomtypes
-                self.natomtypes
-                self.natomtype_list """
+            Extra routines can set:
+                self.neighs
+                self.coord_numbers """
 
         super(Model,self).__init__()
         if(len(args) == 1):
             modelfile = args[0]
             if modelfile[-4:] == '.xyz':
                 self.read_xyz(modelfile)
+            elif modelfile[-4:] == '.dat':
+                self.read_dat(modelfile)
             else:
                 raise Exception("Unknown input model type!")
         elif(len(args) == 5):
@@ -45,16 +49,9 @@ class Model(object):
             raise Exception("Unknown input parameters to Model()!")
         self.hutch = Hutch(self)
 
-        self.atomtypes = []
-        self.natomtypes = 0
-        self.natomtype_list = []
+        self.atomtypes = {}
         for atom in self.atoms:
-            if atom.z not in self.atomtypes:
-                self.atomtypes.append(atom.z)
-                self.natomtypes += 1
-                self.natomtype_list.append(1)
-            else:
-                self.natomtype_list[self.atomtypes.index(atom.z)] += 1
+            self.atomtypes[atom.z] = self.atomtypes.get(atom.z, 0) + 1
 
 
     def read_xyz(self,modelfile):
@@ -83,8 +80,78 @@ class Model(object):
             if type(self.atoms[i].z) == type('hi'):
                 self.atoms[i].z = znum2sym.sym2z(self.atoms[i].z)
 
-    def write_our_xyz(self,outfile):
-        of = open(outfile,'w')
+    def read_dat(self,modelfile):
+        with open(modelfile) as f:
+            content = f.readlines()
+        self.comment = content.pop(0) # Comment line
+        content = [x for x in content if not x.startswith('#')]
+
+        for line in content:
+            if('atoms' in line): self.natoms = int(line.split()[0])
+            if('xlo' in line and 'xhi' in line):
+                self.lx = abs(float(line.split()[0])) + abs(float(line.split()[1]))
+            if('ylo' in line and 'yhi' in line):
+                self.ly = abs(float(line.split()[0])) + abs(float(line.split()[1]))
+            if('zlo' in line and 'zhi' in line):
+                self.lz = abs(float(line.split()[0])) + abs(float(line.split()[1]))
+            if('atom types' in line): nelems = int(line.split()[0])
+            if('Masses' in line): mflag = content.index(line) + 1
+            if('Atoms' in line): aflag = content.index(line) + 1
+        try:
+            mflag
+        except NameError:
+            raise Exception("ERROR! You need to define the masses in the .dat file.")
+        atomtypes = {}
+        while(nelems > 0):
+            if(len(content[mflag].split()) == 2):
+                atomtypes[int(content[mflag].split()[0])] = masses.get_znum(float(content[mflag].split()[1]))
+                nelems -= 1
+            mflag += 1
+        self.atoms = []
+        natoms = self.natoms
+        while(natoms > 0):
+            sline = content[aflag].split()
+            if(len(sline) >= 5):
+                # We found an atom
+                id = int(sline[0])
+                type = int(sline[1])
+                x = float(sline[2])
+                y = float(sline[3])
+                z = float(sline[4])
+                znum = atomtypes[type]
+                # Add it to the model
+                self.atoms.append(Atom(id,znum,x,y,z))
+                natoms -= 1
+            aflag += 1
+
+    def write_dat(self,outfile=None):
+        if outfile is None:
+            of = sys.stdout
+        else:
+            of = open(outfile,'w')
+        of.write(self.comment+'\n')
+        of.write('{0} atoms\n\n'.format(self.natoms))
+        of.write('{0} atom types\n\n'.format(len(self.atomtypes)))
+        of.write('{0} {1} xlo xhi\n'.format(-self.lx/2,self.lx/2))
+        of.write('{0} {1} ylo yhi\n'.format(-self.ly/2,self.ly/2))
+        of.write('{0} {1} zlo zhi\n\n'.format(-self.lz/2,self.lz/2))
+        of.write('Masses\n\n')
+        atomtypes = list(self.atomtypes)
+        atomtypes.sort()
+        atomtypes.reverse()
+        for i,z in enumerate(atomtypes):
+            of.write('{0} {1}\n'.format(i+1,round(masses.get_mass(z),2)))
+        of.write('\n')
+        of.write('Atoms\n\n')
+        for i,atom in enumerate(self.atoms):
+            of.write('{0} {1} {2} {3} {4}\n'.format(atom.id+1, atomtypes.index(atom.z)+1, atom.coord[0], atom.coord[1], atom.coord[2]))
+
+
+    def write_our_xyz(self,outfile=None):
+        if outfile is None:
+            of = sys.stdout
+        else:
+            of = open(outfile,'w')
         of.write(self.comment)
         of.write("{0} {1} {2}\n".format(self.lx, self.lx, self.lz))
         for atom in self.atoms:
@@ -92,8 +159,11 @@ class Model(object):
         of.write('-1')
         of.close()
 
-    def write_cif(self,outfile):
-        of = open(outfile,'w')
+    def write_cif(self,outfile=None):
+        if outfile is None:
+            of = sys.stdout
+        else:
+            of = open(outfile,'w')
         of.write('_pd_phase_name\t'+self.comment+'\n')
         of.write('_cell_length_a '+str(self.lx)+'\n')
         of.write('_cell_length_b '+str(self.ly)+'\n')
@@ -103,15 +173,10 @@ class Model(object):
         of.write('loop_\n_symmetry_equiv_pos_as_xyz\n   \'x, y, z\'\n\n')
         of.write('loop_\n   _atom_site_label\n   _atom_site_occupancy\n   _atom_site_fract_x\n   _atom_site_fract_y\n   _atom_site_fract_z\n   _atom_site_adp_type\n   _atom_site_B_iso_or_equiv\n   _atom_site_type_symbol\n')
 
-        atomtypes = []
-        for i in self.atomtypes:
-            atomtypes.append(0)
+        atomtypes = {}
         for atom in self.atoms:
-            # Get which atom type we have:
-            atomtype = self.atomtypes.index(atom.z)
-            atomtypes[atomtype] += 1
-            #print(atomtypes)
-            of.write('   '+znum2sym.z2sym(atom.z)+str(atomtypes[atomtype])+'\t1.0\t'+str(atom.coord[0]/self.lx+0.5)+'\t'+str(atom.coord[1]/self.ly+0.5)+'\t'+str(atom.coord[2]/self.lz+0.5)+'\tBiso\t1.000000\t'+znum2sym.z2sym(atom.z)+'\n')
+            atomtypes[atom.z] = atomtypes.get(atom.z, 0) + 1
+            of.write('   '+znum2sym.z2sym(atom.z)+str(atomtypes[atom.z])+'\t1.0\t'+str(atom.coord[0]/self.lx+0.5)+'\t'+str(atom.coord[1]/self.ly+0.5)+'\t'+str(atom.coord[2]/self.lz+0.5)+'\tBiso\t1.000000\t'+znum2sym.z2sym(atom.z)+'\n')
         of.write('\n')
         of.close()
 
@@ -126,9 +191,42 @@ class Model(object):
         self.neighs = {}
         for atom in self.atoms:
             self.neighs[atom] = self.get_atoms_in_cutoff(atom,cutoff)
-            #for i in range(0,len(self.neighs[atom])):
-            #    # Neighbor syntax: (neighbor atom, dist to main atom)
-            #    self.neighs[atom][i] = (self.neighs[atom][i],self.dist(atom,self.neighs[atom][i]))
+
+    def check_neighbors(self):
+        for atom in self.atoms:
+            for n in self.neighs[atom]:
+                if atom not in self.neighs[n]:
+                    print("You're neighbors are screwed up! Atom IDs are {0}, {1}.".format(atom.id,n.id))
+                    print("Neighbors of: {0}".format(atom))
+                    print(self.neighs[atom])
+                    print("Neighbors of: {0}".format(n))
+                    print(self.neighs[n])
+                    print("Dist = {0}".format(self.dist(atom,n)))
+                    print("Dist = {0}".format(self.dist(n,atom)))
+
+
+    def generate_coord_numbers(self):
+        """ self.neighs must be defined first """
+        try:
+            self.neighs
+        except NameError:
+            pass
+        self.coord_numbers = {}
+        # Form will be:
+        #   {'Cu-Al': 4.5}, etc.
+        for typea in self.atomtypes:
+            self.coord_numbers[znum2sym.z2sym(typea)] = 0
+            for typeb in self.atomtypes:
+                self.coord_numbers[znum2sym.z2sym(typea)+'-'+znum2sym.z2sym(typeb)] = 0
+        for atom in self.atoms:
+            for n in self.neighs[atom]:
+                self.coord_numbers[znum2sym.z2sym(atom.z)] += 1
+                self.coord_numbers[znum2sym.z2sym(atom.z)+'-'+znum2sym.z2sym(n.z)] += 1
+        self.bonds = self.coord_numbers.copy()
+        for key in self.coord_numbers:
+            elem = znum2sym.sym2z(key.split('-')[0])
+            self.coord_numbers[key] /= float(self.atomtypes[elem])
+
 
     def get_atoms(self):
         return self.atoms
@@ -162,11 +260,6 @@ class Model(object):
         k_end = hutch_e[2]
         list = []
 
-        #print(atom)
-        #print(self.hutch.hutch_position(atom))
-        #print(self.hutch.get_atoms_in_hutch(self.hutch.hutch_position(atom)))
-        #print(atom)
-
         for i in range(0,self.hutch.nhutchs):
             if(i_start <= i_end):
                 if(i < i_start or i > i_end): continue
@@ -182,18 +275,9 @@ class Model(object):
                         if(k < k_start or k > k_end): continue
                     else:
                         if(k < k_start and k > k_end): continue
-
                     list = list + self.hutch.get_atoms_in_hutch((i,j,k))
-                    #print(self.hutch.get_atoms_in_hutch((i,j,k)))
-                    #print((i,j,k))
-        #print(atom)
         list.remove(atom)
         list = [atomi for atomi in list if self.dist(atom,atomi) <= cutoff]
-        #for atomi in list:
-        #    if(self.dist(atom,atomi) > cutoff):
-        #        list.remove(atomi)
-        #    else:
-        #        print("dist={0}".format(self.dist(atom,atomi)))
         return list
 
     def dist(self,atom1,atom2):
@@ -231,9 +315,6 @@ class Model(object):
             atoms = self.hutch.get_atoms_in_hutch(hutch)
             if atom in atoms: atoms.remove(atom)
         start = atoms[0]
-        #print(atom)
-        #print(start)
-        #print(self.dist(atom,start))
 
         atoms = self.get_atoms_in_cutoff(atom,self.dist(atom,start))
         d = float("inf")
@@ -250,7 +331,23 @@ class Model(object):
 
 def main():
     m = Model(sys.argv[1])
-    m.write_cif(sys.argv[1][:-3]+'cif')
+    if(len(sys.argv) > 3):
+        if(sys.argv[2] == '-o'):
+            outtype = sys.argv[3]
+    try:
+        if(outtype == 'dat' or outtype == '.dat'):
+            m.write_dat()
+        elif(outtype == 'cif' or outtype == '.cif'):
+            m.write_cif()
+        elif(outtype == 'xyz' or outtype == '.xyz'):
+            m.write_our_xyz()
+        elif(outtype == 'realxyz' or outtype == '.realxyz'):
+            m.write_real_xyz()
+    except NameError:
+        pass
+
+    #m.write_dat()
+    #m.write_cif(sys.argv[1][:-3]+'cif')
     #m.write_our_xyz(sys.argv[1][:sys.argv[1].rindex('.')]+'.our.xyz')
 
     #dists = []

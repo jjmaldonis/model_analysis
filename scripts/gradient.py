@@ -35,7 +35,7 @@ class GradientGraph(object):
         #for atom in atoms:
         #    if atom.get_znum() == 0:
         #        atom.set_znum(1)
-        nbins = 5
+        nbins = 6
         del_bin = 100.0/nbins
         for atom in atoms:
             for i in range(1,nbins+1):
@@ -45,6 +45,8 @@ class GradientGraph(object):
 
         atoms = [atom.convert_to_sym() for i,atom in enumerate(atoms)]
 
+        print(model.natoms)
+        print('{0} {1} {2}'.format(model.lx,model.ly,model.lz))
         for atom in atoms:
             print atom.vesta()
 
