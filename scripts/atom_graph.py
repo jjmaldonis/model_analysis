@@ -21,18 +21,17 @@ class AtomGraph(object):
         super(AtomGraph,self).__init__()
         
         self.model = Model(modelfile)
-        self.model.generate_neighbors(3.5)
+        self.model.generate_neighbors(cutoff)
         self.model.generate_coord_numbers()
         print('Coordination numbers:')
         pprint(self.model.coord_numbers)
-        print('Bond statistics:')
-        pprint(self.model.bonds)
+        self.model.print_bond_stats()
 
         vor_instance = Vor()
         vor_instance.runall(modelfile,cutoff)
         index = vor_instance.get_index()
         
-        vorcats = VorCats('categorize_parameters.txt')
+        vorcats = VorCats('/home/jjmaldonis/OdieCode/vor/scripts/categorize_parameters.txt')
         vorcats.save(index)
         vorcats.save_vps(self.model)
         

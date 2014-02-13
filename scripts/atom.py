@@ -44,6 +44,8 @@ class Atom(object):
             return self.z + '\t' + str(self.coord[0]) + '\t' + str(self.coord[1]) + '\t' + str(self.coord[2])
     def ourxyz(self):
         return str(self.z)+'\t'+str(self.coord[0])+'\t'+str(self.coord[1])+'\t'+str(self.coord[2])
+    def realxyz(self):
+        return str(znum2sym.z2sym(self.z))+'\t'+str(self.coord[0])+'\t'+str(self.coord[1])+'\t'+str(self.coord[2])
     def frac11(self,lx,ly,lz):
         """ returns the coordinatese in fractional form between -1 and 1
             inputs are the world sizes """

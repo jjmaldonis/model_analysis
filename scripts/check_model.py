@@ -31,10 +31,7 @@ def atom_density(model):
     print(' ')
 
 def composition(model):
-    d = {}
-    for key in model.atomtypes:
-        d[znum2sym.z2sym(key)] = model.atomtypes[key]/float(model.natoms)*100
-    print("\nComposition:")
+    d = model.composition()
     for key in d:
         print('{0}: {1}'.format(key,d[key]))
     print(' ')
@@ -50,7 +47,7 @@ def positions(model):
     print('z-min: {0}\t z-max: {1}\n'.format(min(zz),max(zz)))
 
 def number_of_atoms(model):
-    print("\nNumber of atoms:")
+    print("\nNumber of atoms {0}:".format(sum(model.atomtypes.values())))
     pprint(model.atomtypes)
     print
 

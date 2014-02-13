@@ -1,4 +1,8 @@
 
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.spatial import Voronoi, voronoi_plot_2d
+from pprint import pprint
 from atom import Atom
 from hutch import Hutch
 import znum2sym
@@ -152,12 +156,22 @@ class Model(object):
             of = sys.stdout
         else:
             of = open(outfile,'w')
-        of.write(self.comment)
+        of.write(self.comment.strip()+'\n')
         of.write("{0} {1} {2}\n".format(self.lx, self.lx, self.lz))
         for atom in self.atoms:
             of.write(atom.ourxyz()+'\n')
         of.write('-1')
         of.close()
+
+    def write_real_xyz(self,outfile=None):
+        if outfile is None:
+            of = sys.stdout
+        else:
+            of = open(outfile,'w')
+        of.write(str(self.natoms)+'\n')
+        of.write("{0} {1} {2} {3}\n".format(self.comment.strip(),self.lx, self.lx, self.lz))
+        for i,atom in enumerate(self.atoms):
+            of.write(atom.realxyz()+'\n')
 
     def write_cif(self,outfile=None):
         if outfile is None:
@@ -328,13 +342,56 @@ class Model(object):
     def save_vp_dict(self,vp_dict):
         self.vp_dict = vp_dict
 
+    def composition(self):
+        d = {}
+        for key in self.atomtypes:
+            d[znum2sym.z2sym(key)] = self.atomtypes[key]/float(self.natoms)
+        return d
+
+    def print_bond_stats(self):
+        comp = self.composition()
+        nbonds = 0.0
+        for key in self.bonds:
+            if '-' not in key:
+                nbonds += self.bonds[key]
+        bond_stats = self.bonds.copy()
+        for key in bond_stats.keys():
+            if '-' in key:
+                del bond_stats[key]
+            else:
+                #bond_stats[key] /= nbonds/comp[znum2sym.sym2z(key)]
+                bond_stats[key] *= 1.0/(nbonds*comp[key])
+        print('Bond statistics:')
+        pprint(self.bonds)
+        print('Ratio of actual/expected bonds:')
+        pprint(bond_stats)
+
+    def atom_coords(self):
+        coords = []
+        for atom in self.atoms:
+            coords.append(atom.coord)
+        return coords
+
+    def nn_vor(self):
+        coords = self.atom_coords()
+        vor = Voronoi(coords)
+        print(vor.vertices)
+        print(vor.regions)
+        voronoi_plot_2d(vor)
+        plt.show()
+
+
+
+
 
 def main():
     m = Model(sys.argv[1])
+    outflag = False
     if(len(sys.argv) > 3):
         if(sys.argv[2] == '-o'):
             outtype = sys.argv[3]
-    try:
+            outflag = True
+    if(outflag):
         if(outtype == 'dat' or outtype == '.dat'):
             m.write_dat()
         elif(outtype == 'cif' or outtype == '.cif'):
@@ -343,8 +400,14 @@ def main():
             m.write_our_xyz()
         elif(outtype == 'realxyz' or outtype == '.realxyz'):
             m.write_real_xyz()
-    except NameError:
-        pass
+
+    dists = np.array(m.get_all_dists())
+    dists = [dist[2] for dist in dists]
+    hist,bins = np.histogram(dists,200)
+    print(type(hist.list()))
+    print(type(bin.list()))
+    plt.plot(hist,bin)
+    #m.nn_vor()
 
     #m.write_dat()
     #m.write_cif(sys.argv[1][:-3]+'cif')
