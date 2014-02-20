@@ -10,6 +10,7 @@ class GradientGraph(object):
         super(GradientGraph,self).__init__()
 
     def generate_map(self,cutoff,modelfile):
+        """ cutoff is for vor.f90 """
         vor_instance = Vor()
         vor_instance.runall(modelfile,cutoff)
         index = vor_instance.get_index()

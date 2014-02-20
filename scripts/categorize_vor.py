@@ -5,150 +5,182 @@
 # Output is printed to screen.
 
 import sys
-class VorCats(object):
-    def __init__(self,paramfile):
-        super(VorCats,self).__init__()
-        self.load_param_file(paramfile)
+import vor
+from model import Model
+from voronoi_3d import voronoi_3d
 
-    def load_index_file(self,indexfile):
-        # Open _index.out file.
-        with open(indexfile) as f:
-            self.index = f.readlines()
+def load_index_file(indexfile):
+    # Open _index.out file.
+    with open(indexfile) as f:
+        index = f.readlines()
+    return index
 
-    def load_param_file(self,paramfile):
-        # Now open the input parameter file.
-        # Should be of the form:
-        # Crystal:
-        #     0,2,8,*
-        with open(paramfile) as f:
-            vp_params = [line.split(',') for line in f]
-        # For each voronoi polyhedra 'structure', change it to an int if it's not a *
-        self.vp_dict = {}
-        for vps in vp_params:
-            for i in range(0,len(vps)):
-                vps[i] = vps[i].strip()
-            if(len(vps) == 1):
-                current_entry = vps[0]
-                self.vp_dict[current_entry] = []
-            elif(len(vps) == 4):
+def load_param_file(paramfile):
+    """ Returns a dictionary in the form:
+        {'Crystal-like:': [[0, 4, 4, '*'], [0, 5, 2, '*']], 'Icosahedra-like:': [[0, 2, 8, '*'], [0, 1, 10, '*'], [0, 0, 12, 0], [0, 0, 12, 2]], 'Mixed:': [[0, 3, 6, '*'], [0, 3, 7, 2], [1, 2, 5, 4]]} """
+    # Now open the input parameter file.
+    # Should be of the form:
+    # Crystal:
+    #     0,2,8,*
+    with open(paramfile) as f:
+        vp_params = [line.split(',') for line in f]
+    # For each voronoi polyhedra 'structure', change it to an int if it's not a *
+    vp_dict = {}
+    for vps in vp_params:
+        for i in range(0,len(vps)):
+            vps[i] = vps[i].strip()
+        if(len(vps) == 1):
+            current_entry = vps[0]
+            vp_dict[current_entry] = []
+        elif(len(vps) == 4):
+            for i in range(0,4):
+                if(vps[i] != '*'):
+                    vps[i] = int(vps[i])
+            vp_dict[current_entry].append(vps)
+        else:
+            sys.exit("ERROR IN INPUT VP PARAMETERS. STOPPING.")
+    return vp_dict
+
+def generate_atom_dict(indexes,vp_dict):
+    """ Generate a new dictionary to store all the atoms that are crystalline, icosahedra, etc.
+        Returns a dictionary in the form:
+        { 'Mixed:': [list of mixed atoms], 'Crystal-like:', [list of crystal-like atoms], etc}
+        where each atom has the form of the _index.out lines:
+        [id, .., .., .., .., .., i3, i4, i5, i6, .....] """
+    indexes = [line.strip().split() for line in indexes]
+    for line in indexes:
+        for i in range(0,len(line)):
+            try:
+                line[i] = int(line[i])
+            except:
+                try:
+                    line[i] = float(line[i])
+                except:
+                    pass
+    # Now all the lines are read in and in integer or float form
+    # We care about columns 7-10, which are i3, i4, i5, i6.
+
+    # Generate a new dictionary to store all the atoms that are crystalline, icosahedra, etc.
+    atom_dict = {}
+    for key in vp_dict:
+        atom_dict[key] = []
+    atom_dict["Undef:"] = []
+
+    # Sort atoms, putting them in their correct dictionary place
+    for line in indexes:
+        for key in vp_dict:
+            for vps in vp_dict[key]:
+                found = True
                 for i in range(0,4):
-                    if(vps[i] != '*'):
-                        vps[i] = int(vps[i])
-                self.vp_dict[current_entry].append(vps)
-            else:
-                sys.exit("ERROR IN INPUT VP PARAMETERS. STOPPING.")
-        #for key in self.vp_dict:
-        #    print(key)
-        #    for item in self.vp_dict[key]:
-        #        print(item)
+                    if(vps[i] != '*' and vps[i] != line[i+6]):
+                        found = False
+                if(found):
+                    atom_dict[key].append(line)
+        found = False
+        for key in vp_dict:
+            if line in atom_dict[key]:
+                found = True
+        if not found:
+            atom_dict["Undef:"].append(line)
+    return atom_dict
 
-    def save(self,indexes):
-        indexes = [line.strip().split() for line in indexes]
-        for line in indexes:
+
+def set_atom_vp_types(model,vp_dict):
+    """ saves the voronoi polyhedra type for each atom to the atom in the model """
+    for atom in model.atoms:
+        for key in vp_dict:
+            for vps in vp_dict[key]:
+                found = True
+                for i in range(0,4):
+                    if(vps[i] != '*' and vps[i] != atom.vp.index[i]):
+                        found = False
+                if(found):
+                    atom.vp.type = key[:-1]
+        if atom.vp.type == None:
+            atom.vp.type = 'Undef'
+    #for i,atomi in enumerate(model.atoms):
+    #    found = False
+    #    for key in atom_dict:
+    #        for line in atom_dict[key]:
+    #            if line[0] == i:
+    #                vp = tuple(line[6:14]) # This saves n3 - n10
+    #                center = line[1]
+    #                found = True
+    #    if not found:
+    #        raise Exception("Error! Couldn't find an atom when trying to save it's VP.")
+    #    model.atoms[i].set_vp(vp)
+
+
+def printVorCats(atom_dict,vp_dict):
+    print("Inputs:")
+    for key in vp_dict:
+        print(key)
+        for vps in vp_dict[key]:
+            print vps
+    print("\nOutputs:")
+    sum = 0
+    for key in atom_dict:
+        sum = sum + len(atom_dict[key])
+    print("Total number of atoms categorized: " + str(sum))
+    atom_dict = atom_dict
+    for key in atom_dict:
+        print(key + ' ' + str(len(atom_dict[key])) + ' ' + str(round(len(atom_dict[key])/float(sum)*100,1))+'%')
+        for line in atom_dict[key]:
+            #print(line)
+            for i in range(0,len(line)):
+                if(type(line[i]) != type('hi')):
+                    line[i] = str(line[i])
+            line = "\t".join(line)
+            print(line)
+        for line in atom_dict[key]:
             for i in range(0,len(line)):
                 try:
                     line[i] = int(line[i])
+                    #print("Converted "+str(line[i]))
                 except:
                     try:
                         line[i] = float(line[i])
-                    except:
-                        pass
-        # Now all the lines are read in and in integer or float form
-        # We care about columns 7-10, which are i3, i4, i5, i6.
-
-        # Create a new dictionary to store all the atoms that are crystalline, icosahedra, etc.
-        self.atom_dict = {}
-        for key in self.vp_dict:
-            self.atom_dict[key] = []
-        self.atom_dict["Undef:"] = []
-
-        # Sort atoms, putting them in their correct dictionary place
-        for line in indexes:
-            for key in self.vp_dict:
-                for vps in self.vp_dict[key]:
-                    found = True
-                    for i in range(0,4):
-                        if(vps[i] != '*' and vps[i] != line[i+6]):
-                            found = False
-                    if(found):
-                        self.atom_dict[key].append(line)
-            found = False
-            for key in self.vp_dict:
-                if line in self.atom_dict[key]:
-                    found = True
-            if not found:
-                self.atom_dict["Undef:"].append(line)
-
-    def save_vps(self,model):
-        """ saves the voronoi polyhedra for each atom to the atom in the model
-            also saves the vp_dict to 'model' """
-        for i,atomi in enumerate(model.atoms):
-            found = False
-            for key in self.atom_dict:
-                for line in self.atom_dict[key]:
-                    if line[0] == i:
-                        vp = tuple(line[6:14]) # This saves n3 - n10
-                        found = True
-            if not found:
-                raise Exception("Error! Couldn't find an atom when trying to save it's VP.")
-            model.atoms[i].set_vp(vp)
-        model.save_vp_dict(self.vp_dict)
-
-    def get_atom_dict(self):
-        """ In the form:
-            { 'Mixed:': [list of mixed atoms], 'Crystal-like:', [list of crystal-like atoms], etc}
-            where each atom has the form of the _index.out lines:
-            [id, .., .., .., .., .., i3, i4, i5, i6, .....] """
-        return self.atom_dict
-    def get_vp_dict(self):
-        """ In the form:
-            {'Crystal-like:': [[0, 4, 4, '*'], [0, 5, 2, '*']], 'Icosahedra-like:': [[0, 2, 8, '*'], [0, 1, 10, '*'], [0, 0, 12, 0], [0, 0, 12, 2]], 'Mixed:': [[0, 3, 6, '*'], [0, 3, 7, 2], [1, 2, 5, 4]]} """
-        return self.vp_dict
-
-    def printVorCats(self):
-        print("Inputs:")
-        for key in self.vp_dict:
-            print(key)
-            for vps in self.vp_dict[key]:
-                print vps
-        print("\nOutputs:")
-        sum = 0
-        for key in self.atom_dict:
-            sum = sum + len(self.atom_dict[key])
-        print("Total number of atoms categorized: " + str(sum))
-        self.atom_dict = self.atom_dict
-        for key in self.atom_dict:
-            print(key + ' ' + str(len(self.atom_dict[key])) + ' ' + str(round(len(self.atom_dict[key])/float(sum)*100,1))+'%')
-            for line in self.atom_dict[key]:
-                #print(line)
-                for i in range(0,len(line)):
-                    if(type(line[i]) != type('hi')):
-                        line[i] = str(line[i])
-                line = "\t".join(line)
-                print(line)
-            for line in self.atom_dict[key]:
-                for i in range(0,len(line)):
-                    try:
-                        line[i] = int(line[i])
                         #print("Converted "+str(line[i]))
                     except:
-                        try:
-                            line[i] = float(line[i])
-                            #print("Converted "+str(line[i]))
-                        except:
-                            pass
-                            #print("Could not convert: "+str(line[i]))
+                        pass
+                        #print("Could not convert: "+str(line[i]))
+
+
+def vor_stats(m):
+    counter = {}
+    species_counter = {}
+    for atom in m.atoms:
+        counter[atom.vp.type] = counter.get(atom.vp.type, 0) + 1
+        if atom.z not in species_counter:
+            species_counter[atom.z] = {}
+        species_counter[atom.z][atom.vp.type] = species_counter[atom.z].get(atom.vp.type, 0) + 1
+    print(counter)
+    print(species_counter)
 
 
 def main():
-    # sys.argv = [categorize_parameters.txt, *_index.out]
-    if(len(sys.argv) <= 2): sys.exit("\nERROR! Fix your inputs!\n\nArg 1:  input param file detailing each voronoi 'structure'.\nShould be of the form:\nCrystal:\n    0,2,8,*\n\nArg2: an _index.out file.\n\nOutput is printed to screen.")
-    vor_cats = VorCats(sys.argv[1])
-    vor_cats.load_index_file(sys.argv[2])
-    vor_cats.save(vor_cats.index)
-    vor_cats.printVorCats()
-    #print(vor_cats.atom_dict)
-    #print(vor_cats.vp_dict)
+    ##### sys.argv == [categorize_parameters.txt, *_index.out]
+    # sys.argv == [categorize_parameters.txt, modelfile]
+    #if(len(sys.argv) <= 2): sys.exit("\nERROR! Fix your inputs!\n\nArg 1:  input param file detailing each voronoi 'structure'.\nShould be of the form:\nCrystal:\n    0,2,8,*\n\nArg2: an _index.out file.\n\nOutput is printed to screen.")
+    if(len(sys.argv) <= 2): sys.exit("\nERROR! Fix your inputs!\n\nArg 1:  input param file detailing each voronoi 'structure'.\nShould be of the form:\nCrystal:\n    0,2,8,*\n\nArg2: a model file.\n\nOutput is printed to screen.")
+
+    modelfile = sys.argv[2]
+    paramfile = sys.argv[1]
+
+    m = Model(modelfile)
+
+    voronoi_3d(m,3.5)
+
+    #vorrun = vor.Vor()
+    #vorrun.runall(modelfile,3.5)
+
+    vp_dict = load_param_file(paramfile)
+    #atom_dict = generate_atom_dict(vorrun.index,vp_dict)
+    #vor_cats.load_index_file(sys.argv[2])
+    #printVorCats(atom_dict,vp_dict)
+
+    set_atom_vp_types(m,vp_dict)
+    vor_stats(m)
 
 if __name__ == "__main__":
     main()

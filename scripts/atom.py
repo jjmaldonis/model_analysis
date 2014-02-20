@@ -1,5 +1,14 @@
 import znum2sym
 
+class VoronoiPoly(object):
+    def __init__(self):
+        super(VoronoiPoly,self).__init__()
+        self.index = None
+        self.type = None # User defined string, e.g. 'Crystal-like'
+        self.nnabsp = None # Will be a dictionary
+        self.neighs = None # Will be a list of this atoms neighbors
+        # Note: the center atom is this atom!
+
 class Atom(object):
     """ atom class """
 
@@ -15,6 +24,9 @@ class Atom(object):
         self.id = id
         self.z = znum
         self.coord = (x,y,z)
+        self.vp = VoronoiPoly()
+        self.neighs = None # Neighbors. List when set
+        self.cn = None # Coordination number. int when set
     
 
     def __eq__(self,item):
@@ -55,10 +67,15 @@ class Atom(object):
             inputs are the world sizes """
         return str(self.coord[0]/lx)+'\t'+str(self.coord[1]/ly)+'\t'+str(self.coord[2]/lz)
         
-    def set_vp(self,vp):
-        self.vp = vp
+    def set_vp(self,index,center,type=None):
+        self.vp.index = index
+        self.vp.center = center
+        self.vp.type = type
+    def set_vp_type(self,type):
+        self.vp.type = type
 
-    def get_vp_type(self,vp_dict):
+    def compute_vp_type(self,vp_dict):
+        """ Computes, sets, and returns the vp type based on the input dictionary, which is constructed from a file """
         try:
             self.vp
         except:
@@ -67,9 +84,10 @@ class Atom(object):
             for vps in vp_dict[key]:
                 found = True
                 for i in range(0,4):
-                    if(vps[i] != '*' and vps[i] != self.vp[i]):
+                    if(vps[i] != '*' and vps[i] != self.vp.index[i]):
                         found = False
                 if(found):
+                    self.vp.type = key[:-1]
                     return key[:-1]
         #raise Exception("The voronoi polyhedra for atom {0} could not be determined!".format(self))
         return "Undef"

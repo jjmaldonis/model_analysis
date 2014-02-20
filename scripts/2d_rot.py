@@ -7,9 +7,7 @@ from model import Model
 def rot(model, arr):
     """ arr should be a 9 element rotation numpy array, which we will reshape here """
     arr = arr.reshape((3,3))
-    print(arr)
     arr = np.linalg.inv(arr)
-    print(arr)
     
     for i,atom in enumerate(model.atoms):
         old_coord = [atom.coord[0], atom.coord[1], atom.coord[2]]
@@ -30,10 +28,10 @@ def main():
     #rot_arr = [ 0.954646, -0.233932, 0.184194, 0.280650, 0.913581, -0.294287, -0.099433, 0.332633, 0.937800 ]
 
     # Below is a (the?) rotation matrix of Pei's t1 that gives some planes. Oriented for a specific plane ~.
-    rot_arr = [ -0.977103, -0.123352, -0.173361, -0.130450, 0.990997, 0.030118, 0.168085, 0.052043, -0.984398 ]
+    #rot_arr = [ -0.977103, -0.123352, -0.173361, -0.130450, 0.990997, 0.030118, 0.168085, 0.052043, -0.984398 ]
 
     # Below is a (the?) rotation matrix of Pei's t2 that gives some planes. Oriented for a specific plane ~.
-    #rot_arr = [ 0.985478, -0.010230, -0.169493, 0.009247, 0.999936, -0.006586, 0.169549, 0.004923, 0.985509]
+    rot_arr = [ 0.985478, -0.010230, -0.169493, 0.009247, 0.999936, -0.006586, 0.169549, 0.004923, 0.985509]
 
     # Below is a (the?) rotation matrix of Pei's t3 that gives some planes. Oriented for a specific plane ~.
     #rot_arr = [0.981624,-0.002765,-0.190808, -0.003436,0.999477,-0.032163, 0.190797,0.032228,0.981100]

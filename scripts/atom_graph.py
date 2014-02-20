@@ -64,7 +64,8 @@ class AtomGraph(object):
 
     def get_common_neighs(self,atom,*types):
         neighs = self.get_neighs(atom)
-        list = [ atom for atom in neighs if atom.get_vp_type(self.model.vp_dict) in types ]
+        list = [ atom for atom in neighs if atom.compute_vp_type(self.model.vp_dict) in types ]
+        #list = [ atom for atom in neighs if atom.vp.type in types ]
         #list = []
         #for atom in neighs:
         #    if atom.get_vp_type(self.model.vp_dict) in types:

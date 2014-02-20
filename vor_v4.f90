@@ -1,4 +1,6 @@
-
+!ifort vor_v4.f90 && ./a.out JWH_para.in JHW_t1_model.xyz temp2
+! This is the most up to date version - Jason
+! Still there is stuff in here that doesnt need to be.
 
 module shared_data
     implicit none
@@ -403,6 +405,7 @@ subroutine vtanal!(maxcan, maxver, maxepf, natoms, world_size, noi, nc, nf, ne, 
         do ic=1, nc
             if(nepf(ic) .ne. 0) then
                 do j=1, nepf(ic)
+                    !write(*,*) "DBEUG-3",ic-1,j-1
                     ivs = nloop(j, ic)
                     if(j.eq.nepf(ic))then
                         ive = nloop(1,ic)
@@ -417,8 +420,17 @@ subroutine vtanal!(maxcan, maxver, maxepf, natoms, world_size, noi, nc, nf, ne, 
                     x2 = v(ive,1) - v(nloop(1,ic),1)
                     y2 = v(ive,2) - v(nloop(1,ic),2)
                     z2 = v(ive,3) - v(nloop(1,ic),3)
+                    !write(*,*) "DEBUG0",ic,nloop(1,ic),v(ivs,1),v(nloop(1,ic),1)
+                    !write(*,*) "DEBUG1",ic,nloop(1,ic),v(ivs,2),v(nloop(1,ic),2)
+                    !write(*,*) "DEBUG2",ic,nloop(1,ic),v(ivs,3),v(nloop(1,ic),3)
                     area(ic) = area(ic) + 0.5*sqrt( (y1*z2-z1*y2)**2 + (z1*x2-z2*x1)**2 + (x1*y2-x2*y1)**2 )
+                    !write(*,*) 'DEBUG-2',x1,y1,z1,x2,y2,z2
+                    !write(*,*) 'DEBUG-1',(y1*z2-z1*y2)**2,(z1*x2-z2*x1)**2,(x1*y2-x2*y1)**2
+                    !write(*,*) ic-1,j-1,ivs-1,ive-1
+                    write(*,*) ic-1,j-1,nloop(1,ic)-1
+                    !write(*,*) 'DEBUG0',ic,j,0.5*sqrt( (y1*z2-z1*y2)**2 + (z1*x2-z2*x1)**2 + (x1*y2-x2*y1)**2 )
                 enddo
+                !write(*,*) "DEBUG1",area(ic)
                 tarea = tarea + area(ic)
                 vvol(i) = vvol(i)+area(ic)*sqrt(p(ic,4))/6
             endif
@@ -640,6 +652,7 @@ subroutine work!(maxver, maxepf, noi, nc, tol, p, v, nepf, nloop, mvijk, nv, nf,
                         v(iv,1) = 0.5 * vxijk
                         v(iv,2) = 0.5 * vyijk
                         v(iv,3) = 0.5 * vzijk
+                        !write(*,*) "DEBUG2",iv,vxijk,vyijk,vzijk
                     endif
                 endif
             enddo
@@ -710,6 +723,7 @@ subroutine outvt!(natoms, nsp, id, nedges, nablst, nnabsp, nnab, indx3, indx4, i
     !ncluster1=0
     !ncluster2=0
     !ntcluster=0
+    write(3,*)"id,znum,nneighs,nneighst1,nneighst2,nneighs3,n3,n4,n5,n6,n7,n8,n9,n10,vol"
     do i=1,natoms
         do j=1,nsp
             nnabsp(i,j)=0
@@ -751,25 +765,25 @@ subroutine outvt!(natoms, nsp, id, nedges, nablst, nnabsp, nnab, indx3, indx4, i
         84     format(A2,3f16.10)
         82     FORMAT(I2,3F16.10)
         83     format(25I4)
-        write(3,"(6I6,8I3,F8.4)")i-1,id(i),nnab(i),nnabsp(i,1),nnabsp(i,2),nnabsp(i,3),indx3(i),indx4(i),indx5(i),indx6(i),indx7(i),indx8(i),indx9(i),indx10(i),vvol(i)
-        if(id(i).eq.idct)then
-            icnlst(nnab(i))=icnlst(nnab(i))+1
-            do iind=1,nind
-                add=indlst(iind,1).eq.0.and.indlst(iind,2).eq.0.and.indlst(iind,3).eq.0.and.indlst(iind,4).eq.0
-                ins=indlst(iind,1).eq.indx3(i).and.indlst(iind,2).eq.indx4(i).and.indlst(iind,3).eq.indx5(i).and.indlst(iind,4).eq.indx6(i)
-                if(add)then
-                    indlst(iind,1)=indx3(i)
-                    indlst(iind,2)=indx4(i)
-                    indlst(iind,3)=indx5(i)
-                    indlst(iind,4)=indx6(i)
-                    indlst(iind,5)=indlst(iind,5)+1
-                    exit
-                elseif(ins) then
-                    indlst(iind,5)=indlst(iind,5)+1
-                    exit
-                endif
-            enddo
-        endif
+        write(3,"(6I6,8I3,F8.4)")i-1,znum_sp(id(i)),nnab(i),nnabsp(i,1),nnabsp(i,2),nnabsp(i,3),indx3(i),indx4(i),indx5(i),indx6(i),indx7(i),indx8(i),indx9(i),indx10(i),vvol(i)
+        !if(id(i).eq.idct)then
+        !    icnlst(nnab(i))=icnlst(nnab(i))+1
+        !    do iind=1,nind
+        !        add=indlst(iind,1).eq.0.and.indlst(iind,2).eq.0.and.indlst(iind,3).eq.0.and.indlst(iind,4).eq.0
+        !        ins=indlst(iind,1).eq.indx3(i).and.indlst(iind,2).eq.indx4(i).and.indlst(iind,3).eq.indx5(i).and.indlst(iind,4).eq.indx6(i)
+        !        if(add)then
+        !            indlst(iind,1)=indx3(i)
+        !            indlst(iind,2)=indx4(i)
+        !            indlst(iind,3)=indx5(i)
+        !            indlst(iind,4)=indx6(i)
+        !            indlst(iind,5)=indlst(iind,5)+1
+        !            exit
+        !        elseif(ins) then
+        !            indlst(iind,5)=indlst(iind,5)+1
+        !            exit
+        !        endif
+        !    enddo
+        !endif
     enddo
 
     ! There was some stuff down here, and a bit more above too, that I left out

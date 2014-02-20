@@ -1,4 +1,6 @@
 
+#import matplotlib
+#matplotlib.use('PDF')
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.spatial import Voronoi, voronoi_plot_2d
@@ -30,7 +32,6 @@ class Model(object):
                 self.natoms
                 self.atomtypes
             Extra routines can set:
-                self.neighs
                 self.coord_numbers """
 
         super(Model,self).__init__()
@@ -202,29 +203,25 @@ class Model(object):
         self.natoms += 1
 
     def generate_neighbors(self,cutoff):
-        self.neighs = {}
         for atom in self.atoms:
-            self.neighs[atom] = self.get_atoms_in_cutoff(atom,cutoff)
+            atom.neighs = self.get_atoms_in_cutoff(atom,cutoff)
+            atom.cn = len(atom.neighs)
 
     def check_neighbors(self):
         for atom in self.atoms:
-            for n in self.neighs[atom]:
-                if atom not in self.neighs[n]:
+            for n in atom.neighs:
+                if atom not in n.neighs:
                     print("You're neighbors are screwed up! Atom IDs are {0}, {1}.".format(atom.id,n.id))
                     print("Neighbors of: {0}".format(atom))
-                    print(self.neighs[atom])
+                    print(atom.neighs)
                     print("Neighbors of: {0}".format(n))
-                    print(self.neighs[n])
+                    print(n.neighs)
                     print("Dist = {0}".format(self.dist(atom,n)))
                     print("Dist = {0}".format(self.dist(n,atom)))
 
 
     def generate_coord_numbers(self):
-        """ self.neighs must be defined first """
-        try:
-            self.neighs
-        except NameError:
-            pass
+        """ atom.neighs must be defined first for all atoms """
         self.coord_numbers = {}
         # Form will be:
         #   {'Cu-Al': 4.5}, etc.
@@ -233,7 +230,7 @@ class Model(object):
             for typeb in self.atomtypes:
                 self.coord_numbers[znum2sym.z2sym(typea)+'-'+znum2sym.z2sym(typeb)] = 0
         for atom in self.atoms:
-            for n in self.neighs[atom]:
+            for n in atom.neighs:
                 self.coord_numbers[znum2sym.z2sym(atom.z)] += 1
                 self.coord_numbers[znum2sym.z2sym(atom.z)+'-'+znum2sym.z2sym(n.z)] += 1
         self.bonds = self.coord_numbers.copy()
@@ -299,11 +296,11 @@ class Model(object):
         y = (atom1.coord[1] - atom2.coord[1])
         z = (atom1.coord[2] - atom2.coord[2])
         if(x > self.lx/2): x = self.lx - x
-        if(y > self.lx/2): y = self.ly - y
-        if(z > self.lx/2): z = self.lz - z
+        if(y > self.ly/2): y = self.ly - y
+        if(z > self.lz/2): z = self.lz - z
         if(x < -self.lx/2): x = self.lx + x
-        if(y < -self.lx/2): y = self.ly + y
-        if(z < -self.lx/2): z = self.lz + z
+        if(y < -self.ly/2): y = self.ly + y
+        if(z < -self.lz/2): z = self.lz + z
         x2 = x**2
         y2 = y**2
         z2 = z**2
@@ -401,12 +398,22 @@ def main():
         elif(outtype == 'realxyz' or outtype == '.realxyz'):
             m.write_real_xyz()
 
-    dists = np.array(m.get_all_dists())
-    dists = [dist[2] for dist in dists]
-    hist,bins = np.histogram(dists,200)
-    print(type(hist.list()))
-    print(type(bin.list()))
-    plt.plot(hist,bin)
+    ## create histogram of distances
+    #dists = np.array(m.get_all_dists())
+    #dists = [dist[2] for dist in dists]
+    #hist,bin = np.histogram(dists,200)
+    #hist = list(hist)
+    #bin = list(bin)
+    #bin.pop()
+    #print(hist)
+    #print(bin)
+    #print(hist.index(2172))
+    #print(bin[hist.index(2172)])
+    #print(hist.index(2053))
+    #print(bin[hist.index(2053)])
+    #plt.plot(bin,hist)
+    #plt.savefig('temp.png',format='png')
+
     #m.nn_vor()
 
     #m.write_dat()
