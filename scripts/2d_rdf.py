@@ -12,6 +12,10 @@ from scipy.ndimage.filters import maximum_filter
 from scipy.ndimage.morphology import generate_binary_structure, binary_erosion
 
 
+def dist2d(x1,y1,x2,y2):
+    return math.sqrt((x1-x2)**2+(y1-y2)**2)
+
+
 def detect_peaks(image):
     """
     Takes an image and detect the peaks usingthe local maximum filter.
@@ -110,51 +114,56 @@ def rdf_2d(m,dr):
                 #rx.append(x)
                 #ry.append(y)
                 hist2d[xbin][ybin] += 1
+    # This print statement prints the raw histogram image.
     #print(hist2d.tolist())
 
-    #blurdhist = blur_image(hist2d,10)
+    # Blur the image to get thing smoother for analysis.
     hist2d = blur_image(hist2d,10)
-    #print(blurdhist.tolist())
+    #print(hist2d)
 
-    #objects = scipy.ndimage.measurements.find_objects(blurdhist.astype(int))
-    #for obj in objects:
-    #    print(np.mean(blurdhist[obj]))
-    #    #print(blurdhist[obj])
+    # Note: scipy.ndimage.measurements.find_objects did not work well.
 
-
-    ## This does by hand what the np.histogram does automattically.
-    ##print(mat)
-    ##print("Making histogram: {0} {1}".format(len(rx),len(ry)))
-    ##for i in range(0,len(rx)):
-    ##    x = int(math.floor((rx[i]+m.lx/2.0)/dr))
-    ##    y = int(math.floor((ry[i]+m.lx/2.0)/dr))
-    ##    mat[x][y] += 1
-    ##print("Printing final matrix")
-    ##print(mat.tolist())
-
-    ##hist2d = np.histogram2d(rx,ry,size)
-    ##print(hist2d[0].tolist())
-    ##l = hist2d[0].tolist()
-
+    # Use the stdev and mean to find out what value constitutes a "peak".
     std = np.std(hist2d)
     mean = np.mean(hist2d)
     sm = 3*std+mean
     lsm = np.array( [[0 if x < sm else x for x in list] for list in hist2d] )
+    # This print statement prints the blurred image where the background is removed (set to 0).
     #print(lsm)
-    # Detected peaks is a T/F mask
+
+    # Detected peaks is a T/F mask. This actually finds where the peaks are.
     detected_peaks = detect_peaks(lsm)
-    #print(detected_peaks.tolist())
+    # Set the center of each peak to 0 for viewing purposes, hist2d is no longer usable.
     for i in range(0,len(detected_peaks)):
         for j in range(0,len(detected_peaks[i])):
             if(detected_peaks[i][j]): hist2d[i][j] = 0.0
-    print(hist2d.tolist())
-    #objects = scipy.ndimage.measurements.find_objects(detected_peaks.astype(int))
-    #for obj in objects:
-    #    print(np.mean(detected_peaks[obj]))
-    #    print(detected_peaks[obj])
+    # This print line prints out the image matrix with each center black (ie 0).
+    #print(hist2d.tolist())
+
+    # Here we find where the peaks occur, using detected_peaks.
+    peak_indexes = [(i*dr,j*dr) for i,ilist in enumerate(detected_peaks) for j,val in enumerate(detected_peaks[i]) if detected_peaks[i][j] == True]
+    #print(peak_indexes)
+
+    # Calculate all the distances between peaks.
+    peak_dists = []
+    for i,indi in enumerate(peak_indexes):
+        for j,indj in enumerate(peak_indexes):
+            if(i != j):
+                peak_dists.append(dist2d(indi[0],indi[1],indj[0],indj[1]))
+
+    # Create a histogram of the distances between peaks.
+    # These are the arrays you plot vs. each other in excel.
+    # Take the weighted average before the cutoff to get the
+    # correct plane spacing.
+    # Not sure how to automate this.
+    peak_dist_hist = np.histogram(peak_dists,size*10.0)
+    print(peak_dist_hist[1].tolist())
+    print(peak_dist_hist[0].tolist())
+
 
     ## Get atoms that are in spots:
-    ## Algorithm: Create another matrix of size sizeXsize
+    ## Algorithm (OLD! Revise this):
+    ## Create another matrix of size sizeXsize
     ## that will be used as a holder to identify all positions
     ## in the histogram that have intensities higher than
     ## sm = 3*stddev + mean. ie for every entry in mat that is
