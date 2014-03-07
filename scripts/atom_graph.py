@@ -3,12 +3,13 @@ import os
 import time
 import random
 import string
-import gen_paramfile
 from vor import Vor
-from categorize_vor import VorCats
+import categorize_vor
 from hutch import Hutch
 from model import Model
+import voronoi_3d
 import sys
+import numpy as np
 
 class AtomGraph(object):
     """ Implements a graph made up of atoms from a model.
@@ -21,46 +22,59 @@ class AtomGraph(object):
         super(AtomGraph,self).__init__()
         
         self.model = Model(modelfile)
-        self.model.generate_neighbors(cutoff)
-        self.model.generate_coord_numbers()
-        print('Coordination numbers:')
-        pprint(self.model.coord_numbers)
-        self.model.print_bond_stats()
+        #self.model.generate_neighbors(cutoff)
+        #self.model.generate_coord_numbers()
+        #print('Coordination numbers:')
+        #pprint(self.model.coord_numbers)
+        #self.model.print_bond_stats()
 
-        vor_instance = Vor()
-        vor_instance.runall(modelfile,cutoff)
-        index = vor_instance.get_index()
-        
-        vorcats = VorCats('/home/jjmaldonis/OdieCode/vor/scripts/categorize_parameters.txt')
-        vorcats.save(index)
-        vorcats.save_vps(self.model)
-        
-        self.vp_dict = vorcats.get_vp_dict()
+        # Generate CNs for different cutoffs. I can plot this and find
+        # where it changes the least (ie deriv=0); this is a good spot
+        # to set the cutoff distances because then the neighbors are
+        # the least dependent on the cutoff distance.
+        # I should make this into a function in model.py TODO
+        #for cut in np.arange(2.0,4.6,0.1):
+        #    self.model.generate_neighbors(cut)
+        #    self.model.generate_coord_numbers()
+        #    print("Cutoff: {0}".format(cut))
+        #    for key in self.model.coord_numbers:
+        #        if(len(key) < 4):
+        #            print('  {0}: {1}'.format(key,self.model.coord_numbers[key]))
 
-        self.atom_dict = vorcats.get_atom_dict()
+        #vor_instance = Vor()
+        #vor_instance.runall(modelfile,cutoff)
+        #index = vor_instance.get_index()
+        #
+        #vorcats = VorCats('/home/jjmaldonis/OdieCode/vor/scripts/categorize_parameters.txt')
+        #vorcats.save(index)
+        #vorcats.save_vps(self.model)
+        #
+        #self.vp_dict = vorcats.get_vp_dict()
+
+        #self.atom_dict = vorcats.get_atom_dict()
+        ##for key in self.atom_dict:
+        ##    print("{0} {1}".format(key,self.atom_dict[key]))
         #for key in self.atom_dict:
-        #    print("{0} {1}".format(key,self.atom_dict[key]))
-        for key in self.atom_dict:
-            for i in range(0,len(self.atom_dict[key])):
-                self.atom_dict[key][i] = self.atom_dict[key][i][0]
-        #for key in self.atom_dict:
-        #    print("{0} {1}".format(key,len(self.atom_dict[key])))
-        #    #print("{0} {1}".format(key,self.atom_dict[key]))
+        #    for i in range(0,len(self.atom_dict[key])):
+        #        self.atom_dict[key][i] = self.atom_dict[key][i][0]
+        ##for key in self.atom_dict:
+        ##    print("{0} {1}".format(key,len(self.atom_dict[key])))
+        ##    #print("{0} {1}".format(key,self.atom_dict[key]))
 
-        #self.values = {}
-        #for atom in self.model.atoms:
-        #    for key in self.atom_dict:
-        #        if atom.id in self.atom_dict[key]:
-        #            self.values[atom] = key[:-1]
-        #    if atom not in self.values:
-        #        print("CAREFUL! SOMETHING WENT WRONG!")
-        #        #self.values[atom] = "Undef"
-        #for key in self.values:
-        #    print("{0}: {1}".format(key,self.values[key]))
+        ##self.values = {}
+        ##for atom in self.model.atoms:
+        ##    for key in self.atom_dict:
+        ##        if atom.id in self.atom_dict[key]:
+        ##            self.values[atom] = key[:-1]
+        ##    if atom not in self.values:
+        ##        print("CAREFUL! SOMETHING WENT WRONG!")
+        ##        #self.values[atom] = "Undef"
+        ##for key in self.values:
+        ##    print("{0}: {1}".format(key,self.values[key]))
 
+        # Let's also run our VP algorithm to generate all that info.
+        #voronoi_3d.voronoi_3d(self.model,cutoff)
 
-    def get_neighs(self,atom):
-        return self.model.neighs[atom]
 
     def get_common_neighs(self,atom,*types):
         neighs = self.get_neighs(atom)

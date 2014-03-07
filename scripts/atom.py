@@ -7,6 +7,7 @@ class VoronoiPoly(object):
         self.type = None # User defined string, e.g. 'Crystal-like'
         self.nnabsp = None # Will be a dictionary
         self.neighs = None # Will be a list of this atoms neighbors
+        self.vol = None # This will be a float
         # Note: the center atom is this atom!
 
 class Atom(object):

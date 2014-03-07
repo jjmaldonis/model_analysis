@@ -33,11 +33,11 @@ def voronoi_3d(model,cutoff):
     nablst = []
     nedges = []
 
-    nedges,nnab,nablst,vvol = vtanal(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol)
-    outvt(model,nedges,nnab,nablst,vvol)
+    nedges,nnab,nablst,vvol = vp_analysis(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol)
+    save_vp_atom_data(model,nedges,nnab,nablst,vvol)
 
 
-def vtanal(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol):
+def vp_analysis(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol):
     sumvol = 0.0
     volratio = 0.0
     vol = model.lx*model.ly*model.lz
@@ -171,7 +171,7 @@ def vtanal(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol):
     print("percentages of volume counted: {0}".format(volratio))
         
     return nedges,nnab,nablst,vvol
-    #End of vtanal
+    #End of vp_analysis
 
 
 def work(nc,tol,nbad,ibad,p):
@@ -252,7 +252,7 @@ def work(nc,tol,nbad,ibad,p):
     #End of work()
 
 
-def outvt(model,nedges,nnab,nablst,vvol):
+def save_vp_atom_data(model,nedges,nnab,nablst,vvol):
     nnabsp = []
     for i,atomi in enumerate(model.atoms):
         nnabsp.append({})
@@ -262,7 +262,7 @@ def outvt(model,nedges,nnab,nablst,vvol):
 
         for j in range(0,nnab[i]):
             nnabsp[i][model.atoms[nablst[i][j]].z] += 1
-            # nedges is one off, thats why we start at 3 and not 3
+            # nedges is one off, thats why we start at 2 and not 3
             if(nedges[i][j] == 2):
                 atomi.vp.index[0] += 1
             elif(nedges[i][j] == 3):
@@ -282,11 +282,20 @@ def outvt(model,nedges,nnab,nablst,vvol):
             elif(nedges[i][j] == 10):
                 atomi.vp.index[8] += 1
 
+        nablst[i] = [model.atoms[x] for x in nablst[i]]
         atomi.vp.nnabsp = nnabsp[i]
         atomi.vp.neighs = nablst[i]
+        atomi.vp.vol = vvol[i]
 
-        keys = nnabsp[i].keys()
-        #print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(i,atomi.z,nnab[i],nnabsp[i][keys[0]],nnabsp[i][keys[1]],nnabsp[i][keys[2]],atomi.vp.index,vvol[i]))
+
+def print_data(model):
+    for i,atomi in enumerate(model.atoms):
+        keys = atomi.vp.nnabsp.keys()
+        s = str( atomi.vp.nnabsp[keys[0]] )
+        for j in range(1,len(keys)):
+            s += '\t' + str( atomi.vp.nnabsp[keys[j]] )
+        print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(i,atomi.z,nnab[i],s,atomi.vp.index,atomi.vp.vol))
+
 
 
 def connect(i,j,mvijk):
@@ -306,6 +315,7 @@ def main():
     cutoff = 3.5
     m = Model(modelfile)
     voronoi_3d(m,cutoff)
+    print_data(m)
 
 if __name__ == '__main__':
     main()
