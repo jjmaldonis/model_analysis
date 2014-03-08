@@ -1,0 +1,6 @@
+# atom types
+3 Zr Cu Al
+# steps, # total atoms, # atoms of type1, # atoms of type2    
+1 1425 713 642 70
+# box size, # cut-off of neighbor
+   28.28450  3.5

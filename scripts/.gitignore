@@ -1,0 +1,6 @@
+*.pyc
+*.xyz*
+*.dat*
+*.cif*
+rings/
+cluster*.cif

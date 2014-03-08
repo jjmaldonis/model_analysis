@@ -1,0 +1,12 @@
+runs/
+model_updates/
+*.o
+*.mod
+vor_hrmc
+
+cost_func_22792.out
+f_zr.out
+_index.out
+phi_zrzr.out
+rho_zr.out
+_stat.out
