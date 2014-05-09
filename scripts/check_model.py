@@ -53,6 +53,7 @@ def number_of_atoms(model):
 
 def main():
     modelfile = sys.argv[1]
+    cutoff = float(sys.argv[2])
     m = Model(modelfile)
     number_of_atoms(m)
     composition(m)
@@ -60,6 +61,12 @@ def main():
     atoms_in_box(m)
     positions(m)
     check_dists(m)
+    m.generate_neighbors(cutoff)
+    cn = 0.0
+    for atom in m.atoms:
+        cn += atom.cn
+    cn /= m.natoms
+    print('Average CN is {0}'.format(cn))
 
     print("You should also check the RDFs! Partials included!\n")
 

@@ -60,7 +60,7 @@ class Hutch(object):
             #print(self.hutchs)
             raise Exception("You gave an improper hutch address! {0}".format(hutch))
         if atom in self.hutchs[hutch]:
-            raise Exception("Atom already exists in that hutch.")
+            raise Exception("Atom already exists in that hutch: {0}".format(atom))
         self.hutchs[hutch].append(atom)
 
     def remove_atom(self,atom):

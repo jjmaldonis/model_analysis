@@ -147,15 +147,31 @@ def printVorCats(atom_dict,vp_dict):
 
 
 def vor_stats(m):
-    counter = {}
-    species_counter = {}
+    #counter = {}
+    #species_counter = {}
+    #for atom in m.atoms:
+    #    counter[atom.vp.type] = counter.get(atom.vp.type, 0) + 1
+    #    if atom.sym not in species_counter:
+    #        species_counter[atom.sym] = {}
+    #    species_counter[atom.sym][atom.vp.type] = species_counter[atom.sym].get(atom.vp.type, 0) + 1
+    #print(counter)
+    #print(species_counter)
+    cats = {}
     for atom in m.atoms:
-        counter[atom.vp.type] = counter.get(atom.vp.type, 0) + 1
-        if atom.z not in species_counter:
-            species_counter[atom.z] = {}
-        species_counter[atom.z][atom.vp.type] = species_counter[atom.z].get(atom.vp.type, 0) + 1
-    print(counter)
-    print(species_counter)
+        if atom.vp.type not in cats:
+            cats[atom.vp.type] = {}
+        cats[atom.vp.type][atom.sym] = cats[atom.vp.type].get(atom.sym,0) + 1
+        cats[atom.vp.type]["Total"] = cats[atom.vp.type].get("Total",0) + 1
+    for key in cats:
+        print("{0}: {1}".format(key,cats[key]["Total"]))
+        for elem in cats[key]:
+            if(elem != "Total"): print("   {0}: {1}".format(elem,cats[key][elem]))
+
+def print_all(m):
+    for atom in m.atoms:
+        print("{0} {1} {2}".format(atom,atom.vp.index,atom.vp.type))
+
+        
 
 
 def main():
@@ -169,10 +185,11 @@ def main():
 
     m = Model(modelfile)
 
-    voronoi_3d(m,3.5)
+    #voronoi_3d(m,3.5)
 
-    #vorrun = vor.Vor()
-    #vorrun.runall(modelfile,3.5)
+    vorrun = vor.Vor()
+    vorrun.runall(modelfile,3.5)
+    vorrun.set_atom_vp_indexes(m)
 
     vp_dict = load_param_file(paramfile)
     #atom_dict = generate_atom_dict(vorrun.index,vp_dict)
@@ -180,7 +197,15 @@ def main():
     #printVorCats(atom_dict,vp_dict)
 
     set_atom_vp_types(m,vp_dict)
-    vor_stats(m)
+
+    #print("Undefined indexes:")
+    #for atom in m.atoms:
+    #    if atom.vp.type == "Undef":
+    #        print("{0} {1} {2}".format(atom.id,atom.z,atom.vp.index))
+
+    print_all(m)
+    vor_stats(m) # Prints what you probably want
+
 
 if __name__ == "__main__":
     main()

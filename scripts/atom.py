@@ -3,7 +3,7 @@ import znum2sym
 class VoronoiPoly(object):
     def __init__(self):
         super(VoronoiPoly,self).__init__()
-        self.index = None
+        self.index = None # Will be a list
         self.type = None # User defined string, e.g. 'Crystal-like'
         self.nnabsp = None # Will be a dictionary
         self.neighs = None # Will be a list of this atoms neighbors
@@ -23,11 +23,15 @@ class Atom(object):
 
         super(Atom, self).__init__()
         self.id = id
-        self.z = znum
+        if(type(znum) == type(0)):
+            self.z = znum
+        elif(type(znum) == type('string')):
+            self.z = znum2sym.sym2z(znum)
         self.coord = (x,y,z)
         self.vp = VoronoiPoly()
         self.neighs = None # Neighbors. List when set
         self.cn = None # Coordination number. int when set
+        self.sym = znum2sym.z2sym(self.z) #atomic symbol
     
 
     def __eq__(self,item):
@@ -40,7 +44,8 @@ class Atom(object):
         return not self == item
 
     def __repr__(self):
-        return str(self.id)+'\t'+str(self.z)+'\t('+str(round(self.coord[0],3))+','+str(round(self.coord[1],3))+','+str(round(self.coord[2],3))+')'
+        return str(self.id)
+        #return str(self.id)+'\t'+str(self.z)+'\t('+str(round(self.coord[0],3))+','+str(round(self.coord[1],3))+','+str(round(self.coord[2],3))+')'
         #return str(self.id)
         #if(type(self.z) != type('hi')):
         #    return str(self.id) + '\t' + str(self.z) + '\t' + str(self.coord[0]) + '\t' + str(self.coord[1]) + '\t' + str(self.coord[2])

@@ -168,7 +168,7 @@ def vp_analysis(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol):
                     nablst[i][nnab[i]-1] = mtag[ic]
 
     volratio = sumvol/vol
-    print("percentages of volume counted: {0}".format(volratio))
+    print("percentages of volume counted (INCORRECT!): {0}".format(volratio))
         
     return nedges,nnab,nablst,vvol
     #End of vp_analysis

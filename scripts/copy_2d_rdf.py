@@ -3,8 +3,6 @@ import sys
 import math
 import numpy as np
 from model import Model
-from atom import Atom
-from bond_angle_distribution import bad
 import scipy
 from scipy import *
 import scipy.signal
@@ -123,7 +121,7 @@ def rdf_2d(m,dr):
 
     # Blur the image to get thing smoother for analysis.
     # hist2d is no longer usable.
-    hist2d = blur_image(hist2d,20)
+    hist2d = blur_image(hist2d,10)
     #print(hist2d)
 
     # Note: scipy.ndimage.measurements.find_objects did not work well.
@@ -138,47 +136,24 @@ def rdf_2d(m,dr):
 
     # Detected peaks is a T/F mask. This actually finds where the peaks are.
     detected_peaks = detect_peaks(lsm)
-    ## Set the center of each peak to 0 for viewing purposes, hist2d is no longer usable.
-    #for i in range(0,len(detected_peaks)):
-    #    for j in range(0,len(detected_peaks[i])):
-    #        if(detected_peaks[i][j]): hist2d[i][j] = 0.0  # hist2d is blurred at this point as well
-    #        if(detected_peaks[i][j]): orig_hist[i][j] = 0.0
+    # Set the center of each peak to 0 for viewing purposes, hist2d is no longer usable.
+    for i in range(0,len(detected_peaks)):
+        for j in range(0,len(detected_peaks[i])):
+            if(detected_peaks[i][j]): hist2d[i][j] = -1.0  # hist2d is blurred at this point as well
+            if(detected_peaks[i][j]): orig_hist[i][j] = -1.0
     # This print line prints out the image matrix with each center black (ie 0).
     #print(hist2d.tolist())
 
     # Here we find where the peaks occur, using detected_peaks.
-    dr_blurred = m.lx/len(hist2d)
-    peak_indexes = [[i*dr_blurred,j*dr_blurred] for i,ilist in enumerate(detected_peaks) for j,val in enumerate(detected_peaks[i]) if detected_peaks[i][j] == True]
-    #for peak in peak_indexes:
-    #    print(peak)
-    # Calculate all the distances between a peak and the 0-peak.
-    # First find the 0-peak.
-    center = len(hist2d)*dr_blurred/2.0
-    dmin = 100000000.0
-    for ind in peak_indexes:
-        d = math.sqrt( (center-ind[0])**2 + (center-ind[1])**2 )
-        if(d < dmin):
-            dmin = d
-            center_peak = peak_indexes.index(ind)
-    # Now calculate all the distances
-    peak_dists = scipy.spatial.distance.cdist([peak_indexes[center_peak]], peak_indexes, 'euclidean')
+    peak_indexes = [[i*dr,j*dr] for i,ilist in enumerate(detected_peaks) for j,val in enumerate(detected_peaks[i]) if detected_peaks[i][j] == True]
+    #print(peak_indexes)
+
+    ## Calculate all the distances between peaks.
+    peak_dists = scipy.spatial.distance.pdist( peak_indexes, 'euclidean')
     #peak_dists = [ x for x in peak_dists if x < 4.0 ]
     peak_dists.sort()
     #print(peak_dists)
-    for x in peak_dists[0]: print(x)
-
-    # Create a model out of the peak_indexes to do a BAD on
-    atoms = copy(peak_indexes).tolist()
-    for i in range(0,len(atoms)):
-        atoms[i].append(0.0)
-        atoms[i].insert(0,'Al')
-        atoms[i].insert(0,i)
-        atoms[i] = Atom(atoms[i][0],atoms[i][1],atoms[i][2],atoms[i][3],atoms[i][4])
-    badmodel = Model('eh',m.lx,m.ly,m.lz, atoms)
-    badmodel.generate_neighbors(4.0)
-    g = bad(badmodel,180)
-    for i in range(0,len(g[0])):
-        print('{0}\t{1}'.format(g[0][i],g[1][i]))
+    for x in peak_dists: print(x)
 
     return (orig_hist,hist2d)
 
@@ -264,52 +239,26 @@ def main():
     # the pixel size to 0.1 Ang (or whatever it is below), and use the
     # distance tool to measure the peak distances.
     m = Model(sys.argv[1])
-    #hist2d,blurred_hist2d = rdf_2d(m,0.1)
-    hist2d,blurred_hist2d = rdf_2d(m,0.075)
+    hist2d,blurred_hist2d = rdf_2d(m,0.1)
+    temp = np.zeros((len(blurred_hist2d),len(blurred_hist2d[0])),dtype=np.int)
+    for i,row in enumerate(blurred_hist2d):
+        for j,x in enumerate(row):
+            if(x == -1): temp[i][j] = 1
+    np.savetxt('temp1.txt',temp)
+
+    m = Model(sys.argv[2])
+    hist2d,blurred_hist2d = rdf_2d(m,0.1)
+    temp = np.zeros((len(blurred_hist2d),len(blurred_hist2d[0])),dtype=np.int)
+    for i,row in enumerate(blurred_hist2d):
+        for j,x in enumerate(row):
+            if(x == -1): temp[i][j] = 2
+    np.savetxt('temp2.txt',temp)
+
     #print(hist2d.tolist())
     #print(peak_dist_hist[0].tolist()) # histogram
     #print(peak_dist_hist[1].tolist()) # bin edges
     #np.savetxt('2d_rot_matrix.txt',hist2d.tolist())
     #np.savetxt('2d_rot_matrix_blurred.txt',blurred_hist2d.tolist())
-
-    reformed_hist2d = np.zeros((len(blurred_hist2d),len(blurred_hist2d[0])))
-    extra = ( len(hist2d) - len(blurred_hist2d) )/2
-    for i,l in enumerate(hist2d[extra:-extra]):
-        for j,x in enumerate(l[extra:-extra]):
-            reformed_hist2d[i][j] = x
-    #reformed_blurred = np.zeros((len(hist2d),len(hist2d[0])))
-    #extra = ( len(hist2d) - len(blurred_hist2d) )/2
-    #background = 0.0
-    #for i,l in enumerate(blurred_hist2d):
-    #    background += (l[0] + l[-1])/2
-    #background /= len(blurred_hist2d)
-    #background *= 0.90
-    #print('background={0}'.format(background))
-    #reformed_blurred.fill(background)
-    #for i,l in enumerate(blurred_hist2d):
-    #    for j,x in enumerate(l):
-    #        reformed_blurred[i+extra][j+extra] = x
-
-    # Save files as igor wave text files
-    outfile = '2d_rot_matrix.txt'
-    of = open(outfile,'w')
-    of.write('IGOR\nWAVES/D/N=({0},{0})\t {1}\nBEGIN\n'.format(len(reformed_hist2d),'unblurred'))
-    for subwave in reformed_hist2d.tolist():
-        of.write('\t{0}\n'.format("\t".join(str(x) for x in subwave)))
-    of.write('END\n')
-    of.write('X SetScale/I x -{1},{1},"", {0}; SetScale/I y -{2},{2},"", {0}; SetScale/I z -{3},{3},"", {0}\n'.format('unblurred',m.lx/2.0,m.ly/2.0,m.lz/2.0))
-    of.close()
-
-    outfile = '2d_rot_matrix_blurred.txt'
-    of = open(outfile,'w')
-    of.write('IGOR\nWAVES/D/N=({0},{0})\t {1}\nBEGIN\n'.format(len(blurred_hist2d),'blurred'))
-    #of.write('IGOR\nWAVES/D/N=({0},{0})\t {1}\nBEGIN\n'.format(len(reformed_hist2d),'blurred'))
-    for subwave in blurred_hist2d.tolist():
-    #for subwave in reformed_hist2d.tolist():
-        of.write('\t{0}\n'.format("\t".join(str(x) for x in subwave)))
-    of.write('END\n')
-    of.write('X SetScale/I x -{1},{1},"", {0}; SetScale/I y -{2},{2},"", {0}; SetScale/I z -{3},{3},"", {0}\n'.format('blurred',m.lx/2.0,m.ly/2.0,m.lz/2.0))
-    of.close()
 
     ## A first attempt at rotating the model and finding interesting things.
     #for t1 in [36]*7:

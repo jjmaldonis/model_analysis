@@ -12,7 +12,7 @@ import sys
 import math
 import masses
 
-class Model(object):
+class fastModel(object):
     """ xyz model file class 
     functions:
         write_our_xyz(outfile)
@@ -22,44 +22,21 @@ class Model(object):
         nearest_neigh(atom)
         save_vp_dict(vp_dict) """
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, modelfile):
         """ sets:
                 self.comment
                 self.lx
                 self.ly
                 self.lz
-                self.atoms
                 self.natoms
-                self.atomtypes
-                self.xx, self.yy, self.zz
-            Extra routines can set:
-                self.coord_numbers """
+                self.atoms, which only contains [x,y,z] """
 
-        super(Model,self).__init__()
-        if(len(args) == 1):
-            modelfile = args[0]
-            if modelfile[-4:] == '.xyz':
-                self.read_xyz(modelfile)
-            elif modelfile[-4:] == '.dat':
-                self.read_dat(modelfile)
-            else:
-                raise Exception("Unknown input model type! File={0}".format(modelfile))
-        elif(len(args) == 5):
-            self.comment = args[0]
-            self.lx = args[1]
-            self.ly = args[2]
-            self.lz = args[3]
-            self.atoms = args[4]
-            self.natoms = len(args[4])
+        super(fastModel,self).__init__()
+        if modelfile[-4:] == '.xyz':
+            self.read_xyz(modelfile)
         else:
-            raise Exception("Unknown input parameters to Model()!")
-        self.hutch = Hutch(self)
-
-        self.atomtypes = {}
-        for atom in self.atoms:
-            self.atomtypes[atom.z] = self.atomtypes.get(atom.z, 0) + 1
-
-        self.generate_position_arrays()
+            raise Exception("Unknown input model type! File={0}".format(modelfile))
+        #self.hutch = Hutch(self) # Haven't done hutches for this fast version yet
 
 
     def read_xyz(self,modelfile):
@@ -84,11 +61,11 @@ class Model(object):
                         pass
         self.atoms = []
         for i,atom in enumerate(content):
-            self.atoms.append(Atom(i,atom[0],atom[1],atom[2],atom[3]))
-            #if type(self.atoms[i].z) == type('hi'):
-            #    self.atoms[i].z = znum2sym.sym2z(self.atoms[i].z)
+            self.atoms.append(np.array([atom[1],atom[2],atom[3]]))
+        self.atoms = np.array(self.atoms)
 
     def read_dat(self,modelfile):
+        raise Exception("Haven't done fast version of this yet!")
         with open(modelfile) as f:
             content = f.readlines()
         self.comment = content.pop(0) # Comment line
@@ -173,7 +150,7 @@ class Model(object):
         else:
             of = open(outfile,'w')
         of.write(str(self.natoms)+'\n')
-        of.write("{1} {2} {3} {0}\n".format(self.comment.strip(),self.lx, self.lx, self.lz))
+        of.write("{0} {1} {2} {3}\n".format(self.comment.strip(),self.lx, self.lx, self.lz))
         for i,atom in enumerate(self.atoms):
             of.write(atom.realxyz()+'\n')
 
@@ -201,21 +178,14 @@ class Model(object):
     
         
     def add_atom(self,atom):
-        # This doesn't update anything besides the hutch and self.atoms
         self.atoms.append(atom)
         self.hutch.add_atom(atom)
         self.natoms += 1
 
-    def remove_atom(self,atom):
-        # This doesn't update anything besides the hutch and self.atoms
-        self.hutch.remove_atom(atom)
-        self.atoms.remove(atom)
-        self.natoms -= 1
-
     def generate_neighbors(self,cutoff):
         for atom in self.atoms:
             atom.neighs = self.get_atoms_in_cutoff(atom,cutoff)
-            if(atom in atom.neighs): atom.neighs.remove(atom)
+            if atom in atom.neighs: atom.neighs.remove(atom)
             atom.cn = len(atom.neighs)
 
     def check_neighbors(self):
@@ -298,7 +268,7 @@ class Model(object):
                     else:
                         if(k < k_start and k > k_end): continue
                     list = list + self.hutch.get_atoms_in_hutch((i,j,k))
-        #if(atom in list): list.remove(atom)
+        list.remove(atom)
         list = [atomi for atomi in list if self.dist(atom,atomi) <= cutoff]
         return list
 
@@ -306,51 +276,29 @@ class Model(object):
         x = (atom1.coord[0] - atom2.coord[0])
         y = (atom1.coord[1] - atom2.coord[1])
         z = (atom1.coord[2] - atom2.coord[2])
-        x = x - self.lx*round(x/self.lx)
-        y = y - self.ly*round(y/self.ly)
-        z = z - self.lz*round(z/self.lz)
-        #if(math.sqrt(x**2+y**2+z**2) > self.lx/2.0*math.sqrt(3)):
-        #    print("Error in dist")
-        #    print(atom1,atom2)
-        #    print(x,y,z,math.sqrt(x**2+y**2+z**2))
-        #while(x > self.lx/2): x = self.lx - x
-        #while(y > self.ly/2): y = self.ly - y
-        #while(z > self.lz/2): z = self.lz - z
-        #while(x < -self.lx/2): x = self.lx + x
-        #while(y < -self.ly/2): y = self.ly + y
-        #while(z < -self.lz/2): z = self.lz + z
-        return math.sqrt(x**2+y**2+z**2)
+        while(x > self.lx/2): x = self.lx - x
+        while(y > self.ly/2): y = self.ly - y
+        while(z > self.lz/2): z = self.lz - z
+        while(x < -self.lx/2): x = self.lx + x
+        while(y < -self.ly/2): y = self.ly + y
+        while(z < -self.lz/2): z = self.lz + z
+        x2 = x**2
+        y2 = y**2
+        z2 = z**2
+        return math.sqrt(x2+y2+z2)
     def get_all_dists(self):
         dists = []
         for atomi in self.atoms:
             for atomj in self.atoms[self.atoms.index(atomi)+1:]:
                 dists.append([atomi,atomj,self.dist(atomi,atomj)])
         return dists
-    def nearest_neigh_of_same_type(self,atom):
-        """ returns the nearest at of the same species as 'atom' """
-        cutoff = 3.5
-        atoms = []
-        while(len(atoms) == 0):
-            atoms = self.get_atoms_in_cutoff(atom,cutoff)
-            atoms = [x for x in atoms if x.z == atom.z]
-            #if atom in atoms: atoms.remove(atom)
-            cutoff *= 2
-        cutoff /= 2 # set back to the value used in case I want it later
-        d = float("inf")
-        for atomi in atoms:
-            dt = self.dist(atom,atomi)
-            if dt < d:
-                d = dt
-                a = atomi
-        if(a.z != atom.z): raise Exception("Error! Function 'nearest_neigh_of_same_type' didn't work!")
-        return a
     def nearest_neigh(self,atom):
         """ returns an atoms nearest neighbor """
         hutch = self.hutch.hutch_position(atom)
         atoms = self.hutch.get_atoms_in_hutch(hutch)[:]
         if atom in atoms: atoms.remove(atom)
 
-        # This generation of nearby hutches isn't perfect but it will work
+        # This generation isn't perfect but it will work
         rots = [(1,0,0),(0,1,0),(0,0,1)]
         i = 0
         while len(atoms) == 0:
@@ -361,7 +309,7 @@ class Model(object):
         start = atoms[0]
 
         atoms = self.get_atoms_in_cutoff(atom,self.dist(atom,start))
-        #if atom in atoms: atoms.remove(atom)
+        if atom in atoms: atoms.remove(atom)
         d = float("inf")
         for atomi in atoms:
             dt = self.dist(atom,atomi)

@@ -57,7 +57,6 @@ class Vor(object):
         """ Runs vor from command line. """
 
         if(type(cutoff) == type('hi')): 
-            print(cutoff)
             cutoff = float(cutoff)
 
         if outbase is None:
@@ -78,7 +77,7 @@ class Vor(object):
             raise Exception("Voronoi.f90 failed! "+self.perr)
         print("Voronoi.f90 exit status: "+str(self.preturncode))
 
-    def save(self,outbase):
+    def save_files(self,outbase):
         """ Saves to memory the stat and index .out files with base 'outbase' """
         with open(outbase+'_index.out') as f:
             self.index = f.readlines()
@@ -96,13 +95,32 @@ class Vor(object):
 
     def get_stat(self,):
         return self.stat
-    def get_index(self,):
+    def get_indexes(self,):
         return self.index
 
     def runall(self,modelfile,cutoff):
         self.run(modelfile,cutoff)
-        self.save(self.randstr)
+        self.save_files(self.randstr)
         self.del_files(self.randstr)
+
+    def set_atom_vp_indexes(self,model):
+        """ Also sets CN for each atom as Sum(index_list) because
+            that is the best way to quantify CN when running this
+            algorithm """
+        # Split index line
+        index = [line.strip().split() for line in self.index]
+        if('nneighs,' in index[0]): index.pop(0)
+        for line in index:
+            if(len(line) != 15):
+                line.append(line[-1])
+                line[-2] = 0
+            atom = int(line[0])
+            vol = float(line[-1])
+            inds = line[6:14]
+            inds = [int(x) for x in inds]
+            model.atoms[atom].vp.vol = vol
+            model.atoms[atom].vp.index = inds
+            model.atoms[atom].cn = sum(inds)
 
 
 def main():
@@ -115,7 +133,7 @@ def main():
         vorrun.run(sys.argv[1],sys.argv[2],sys.argv[3])
     else:
         sys.exit("Wrong number of inputs.")
-    vorrun.save(vorrun.randstr)
+    vorrun.save_files(vorrun.randstr)
     #for line in vorrun.index: print(line.strip())
     #print(vorrun.statheader.strip())
     #for line in vorrun.stat: print(line.strip())
