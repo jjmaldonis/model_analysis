@@ -1,3 +1,5 @@
+import copy
+import warnings
 from pprint import pprint
 import os
 import time
@@ -101,6 +103,7 @@ class AtomGraph(object):
     def get_clusters(self,*cluster_types):
         """ This searches for interpenetrating clusters of cluster_types
         see http://arxiv.org/pdf/1302.1895.pdf """
+        warnings.warn("Deprecated function, use one of the better ones!", DeprecationWarning)
         connections = {}
         #print("Connections:")
         # Generate a list for every atom that contains its neighbors of the type(s) we desire
@@ -122,7 +125,7 @@ class AtomGraph(object):
         # The x-axis printed out isn't quite right, you have to pick the integer that's
         # inside the bin and plot the Y axis vs that.
         lenconnections = [len(connections[x]) for x in connections if x.id in temp_atoms]
-        print(np.histogram(lenconnections,max(lenconnections)+1))
+        #print(np.histogram(lenconnections,max(lenconnections)+1))
 
         # Go thru each atom I just found and append to a cluster all atoms ...
         for atom in temp_atoms:
@@ -183,14 +186,265 @@ class AtomGraph(object):
         #    print(cluster)
         #print(sum([len(l) for l in clusters]))
         return clusters
+
+
+    def get_connected_clusters_with_neighs(self,cutoff,*cluster_types):
+        """ Connected cluster finding.
+            Finds O -- O bonds and O -- X -- O bonds, where O
+            represents an atom of the VP type(s) """
+        # This code currently gives me a first nearest neighbor
+        # search.
+        m = Model(self.model.comment, self.model.lx, self.model.ly, self.model.lz, self.model.atoms[:])
+        m.generate_neighbors(cutoff)
+        count = 0
+        for atom in m.atoms:
+            keep = False
+            if( atom.vp.type in cluster_types):
+                keep = True
+                #print('Keeping due to atom')
+            ncount = 0
+            if(not keep):
+                temp = [n for n in atom.neighs if n.vp.type in cluster_types]
+                if(len(temp) > 1):
+                    #keep = True
+                    atom.neighs = [n for n in atom.neighs if n.vp.type in cluster_types]
+                #for n in atom.neighs:
+                #    if(n.vp.type in cluster_types):
+                #        ncount += 1
+                #        if(ncount >= 4):
+                #            keep = True
+                #            break
+            if(not keep):
+                atom.neighs = [n for n in atom.neighs if n.vp.type in cluster_types]
+                #print('Removing neighbors')
+                #print(self.model.atoms[atom.id].neighs)
+            else:
+                count += 1
+                if(atom.vp.type not in cluster_types): print(len(temp),ncount,atom)
+        print('Total number of {0} atoms: {1}'.format(cluster_types,count))
+        #for i,atom in enumerate(m.atoms):
+        #    if(atom.neighs != []): print(i,atom.id,atom.neighs)
+        #    if(atom.neighs != []):
+        #        for atom2 in m.atoms:
+        #            if(atom in atom2.neighs):
+        # Now I should be able to go through the graph/model's neighbors.
+        clusters = []
+        for atom in m.atoms:
+            already_found = False
+            for cluster in clusters:
+                if atom in cluster:
+                    already_found = True
+            # If the VP atom isn't already in a cluster:
+            if(not already_found and atom.vp.type in cluster_types):
+                # Breadth first search
+                queue = []
+                visited = {}
+                queue.append(atom)
+                visited[atom] = True
+                while( len(queue) ):
+                    t = queue.pop()
+                    for n in t.neighs:
+                        if( not visited.get(n,False) ):
+                            queue.append(m.atoms[m.atoms.index(n)])
+                            visited[n] = True
+                #if(len(clusters) == 0):
+                #    for x in list(visited):
+                #        print(x)
+                clusters.append(list(visited))
+        for i,atom in enumerate(clusters[0]):
+            found = atom.vp.type in cluster_types
+            for n in atom.neighs:
+                if(n.vp.type in cluster_types):
+                    found = True
+            if(not found):
+                print('AG found an atom that isnt connected to a VP type! {0} {1} {2} {3}'.format(i+1,atom,atom.neighs,atom.vp.type))
+                for atom2 in m.atoms:
+                    if atom in atom2.neighs:
+                        print('  It is connected to {0} {1} {2}'.format(atom2,atom2.neighs,atom2.vp.type))
+                        for n in atom2.neighs:
+                            print('   Dist from {0} to neighbor {1}: {2}. n.vp.type={3}'.format(atom2,n,m.dist(atom2,n),n.vp.type))
+            
+        for cluster in clusters:
+            for atom in cluster:
+                if(cluster.count(atom) > 1):
+                    print('     ERROR!!!!')
+                    #cluster.remove(atom)
+        return clusters
+
+    def get_interpenetrating_clusters_with_neighs(self,cutoff,*cluster_types):
+        """ Interpenetrating cluster finding.
+            O -- O bonds only, where O represents 
+            an atom of the VP type(s) """
+        # This works too, but the below code is just better looking and gets the same thing accomplished.
+        #m = Model(self.model.comment, self.model.lx, self.model.ly, self.model.lz, self.model.atoms[:])
+        #count = 0
+        #for atom in m.atoms:
+        #    keep = False
+        #    if( atom.vp.type in cluster_types):
+        #        keep = True
+        #        #print('Keeping due to atom')
+        #    if(not keep):
+        #        atom.neighs = []
+        #        #print('Removing neighbors')
+        #    else:
+        #        count += 1
+        #print('Total number of {0} atoms: {1}'.format(cluster_types,count))
+        ## Now I should be able to go through the graph/model's neighbors.
+        #clusters = []
+        #for atom in m.atoms:
+        #    already_found = False
+        #    for cluster in clusters:
+        #        if atom in cluster:
+        #            already_found = True
+        #    if( not already_found and atom.vp.type in cluster_types):
+        #        # Breadth first search
+        #        queue = []
+        #        visited = {}
+        #        queue.append(atom)
+        #        visited[atom] = True
+        #        while( len(queue) ):
+        #            t = queue.pop()
+        #            for n in t.neighs:
+        #                if( not visited.get(n,False) ):
+        #                    queue.append(m.atoms[m.atoms.index(n)])
+        #                    visited[n] = True
+        #        clusters.append(list(visited))
+        clusters = self.get_interpenetrating_atoms(cutoff,*cluster_types)
+        # Add neighbors on
+        for cluster in clusters:
+            neighs = []
+            for atom in cluster:
+                for n in self.model.atoms[self.model.atoms.index(atom)].neighs:
+                    if n not in neighs and n not in cluster:
+                        neighs.append(n)
+            cluster += neighs
+        for cluster in clusters:
+            for atom in cluster:
+                if(cluster.count(atom) > 1):
+                    print('     ERROR!!!!')
+                    #cluster.remove(atom)
+        return clusters
+
+    def get_interpenetrating_atoms(self,cutoff,*cluster_types):
+        """ Interpenetrating atom finding.
+            O -- O bonds only, where O represents 
+            an atom of the VP type(s).
+            Neighbors are not included. """
+        m = Model(self.model.comment, self.model.lx, self.model.ly, self.model.lz, self.model.atoms[:])
+        count = 0
+        for atom in m.atoms:
+            if( atom.vp.type in cluster_types):
+                atom.neighs = [ n for n in atom.neighs if n.vp.type in cluster_types ]
+                count += 1
+            else:
+                atom.neighs = []
+        print('Total number of {0} atoms: {1}'.format(cluster_types,count))
+        # Now I should be able to go through the graph/model's neighbors.
+        clusters = []
+        for atom in m.atoms:
+            already_found = False
+            for cluster in clusters:
+                if atom in cluster:
+                    already_found = True
+            if( not already_found and atom.vp.type in cluster_types):
+                # Breadth first search
+                queue = []
+                visited = {}
+                queue.append(atom)
+                visited[atom] = True
+                while( len(queue) ):
+                    t = queue.pop()
+                    for n in t.neighs:
+                        if( not visited.get(n,False) ):
+                            queue.append(m.atoms[m.atoms.index(n)])
+                            visited[n] = True
+                clusters.append(list(visited))
+        for cluster in clusters:
+            for atom in cluster:
+                if(cluster.count(atom) > 1):
+                    cluster.remove(atom)
+        ## Add neighbors on too
+        #for cluster in clusters:
+        #    neighs = []
+        #    for atom in cluster:
+        #        for n in self.model.atoms[self.model.atoms.index(atom)].neighs:
+        #            if n not in neighs and n not in cluster:
+        #                neighs.append(n)
+        #    cluster += neighs
+        return clusters
+
+
+    def vefi_sharing(self,*cluster_types):
+        """ This function returns the number of vertex sharing,
+        edge sharing, face sharing, and interpenetrating
+        atoms in the clusters of atoms of type
+        cluster_types + their nearest neighbors
+        that are found in the model.
+        The numbers are returned via a tuple in the order
+        written in the function name: v, e, f, i. """
+        # Vertex shared atoms will have will have 1 and
+        # only 1 shared atom between the two VP.
+        # Edge shared atoms will have 2 and only 2
+        # shared atoms between the two VP.
+        # Face shared atoms will have 3+ atoms shared
+        # between the two VP.
+        # Interpenetrating atoms will have the VPs as
+        # neighbors of each other.
+        # I need to go through each pair of VP and 
+        # check for 1) interpenetrating, 2) face,
+        # 3) edge, and then 4) vertex shared atoms.
+        # When found, I should increment each counter.
+        # Return the counters at the end in a tuple.
+        vp_atoms = []
+        for atom in self.model.atoms:
+            if(atom.vp.type in cluster_types):
+                vp_atoms.append(atom)
+        vertex = 0.0
+        edge = 0.0
+        face = 0.0
+        interpenetrating = 0.0
+        atom_pairs = []
+        for atomi in vp_atoms:
+            for atomj in vp_atoms:
+                common_neighs = 0.0
+                if(atomi != atomj):
+                    if(atomi in atomj.neighs and [atomi,atomj] not in atom_pairs and [atomj,atomi] not in atom_pairs):
+                        interpenetrating += 1.0
+                        atom_pairs.append([atomi,atomj])
+                    for n in atomi.neighs:
+                        #if(n in atomj.neighs and [n,atomj] not in atom_pairs and [atomj,n] not in atom_pairs):
+                        if(n in atomj.neighs):
+                            common_neighs += 1.0
+                            #atom_pairs.append([n,atomj])
+                    if(common_neighs == 1):
+                        vertex += 0.5
+                    elif(common_neighs == 2):
+                        edge += 0.5
+                    elif(common_neighs >= 3):
+                        face += 0.5
+        return(vertex,edge,face,interpenetrating)
+
  
 
 
 def main():
-    cluster_type = 'Crystal-like'
-    #cluster_type = 'Icosahedra-like'
+    #cluster_type = 'Crystal-like'
+    #cluster_type = ['Icosahedra-like', 'Full-icosahedra']
+    #cluster_type = 'Icosahedra-like','Full-icosahedra'
+    cluster_type = 'Icosahedra-like'
 
     ag = AtomGraph(sys.argv[1],3.5)
+    #clusters = ag.get_connected_clusters_with_neighs(3.5,cluster_type)
+    clusters = ag.get_connected_clusters_with_neighs(3.5,'Icosahedra-like','Full-icosahedra')
+    #clusters = ag.get_interpenetrating_clusters_with_neighs(3.5,cluster_type)
+    #clusters = ag.get_clusters(cluster_type)
+    for cluster in clusters:
+        print(cluster)
+        count = 0
+        for atom in cluster:
+            if(atom.vp.type in cluster_type):
+                count += 1
+        print('Counts: {0} + {1}'.format(count,len(cluster)-count))
    
     #clusters = ag.get_clusters(cluster_type)
     #i = 1

@@ -1,6 +1,6 @@
-
 #import matplotlib
 #matplotlib.use('PDF')
+import copy
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.spatial import Voronoi, voronoi_plot_2d
@@ -49,7 +49,7 @@ class Model(object):
             self.lx = args[1]
             self.ly = args[2]
             self.lz = args[3]
-            self.atoms = args[4]
+            self.atoms = [atom.copy() for atom in args[4]]
             self.natoms = len(args[4])
         else:
             raise Exception("Unknown input parameters to Model()!")
@@ -214,6 +214,11 @@ class Model(object):
 
     def generate_neighbors(self,cutoff):
         for atom in self.atoms:
+            #if(atom.z == 40):
+            #    atom.neighs = self.get_atoms_in_cutoff(atom,3.82)
+            #else:
+            #    atom.neighs = self.get_atoms_in_cutoff(atom,cutoff)
+            atom.neighs = []
             atom.neighs = self.get_atoms_in_cutoff(atom,cutoff)
             if(atom in atom.neighs): atom.neighs.remove(atom)
             atom.cn = len(atom.neighs)

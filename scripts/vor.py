@@ -132,7 +132,7 @@ def main():
     elif(len(sys.argv) == 4):
         vorrun.run(sys.argv[1],sys.argv[2],sys.argv[3])
     else:
-        sys.exit("Wrong number of inputs.")
+        sys.exit("Wrong number of inputs. modelfile, cutoff, outbase (optional)")
     vorrun.save_files(vorrun.randstr)
     #for line in vorrun.index: print(line.strip())
     #print(vorrun.statheader.strip())

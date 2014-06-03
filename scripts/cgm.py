@@ -12,7 +12,7 @@ def main():
 
     modelfile = modelfile[modelfile.rfind('/')+1:]
     modelfile = modelfile[:-4]+'.dat'
-    print(modelfile)
+    #print(modelfile)
     m.write_dat('temp.dat')
 
     of = open("cgm_temp.in",'w')

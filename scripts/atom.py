@@ -1,4 +1,5 @@
 import znum2sym
+import copy
 
 class VoronoiPoly(object):
     def __init__(self):
@@ -32,11 +33,19 @@ class Atom(object):
         self.neighs = None # Neighbors. List when set
         self.cn = None # Coordination number. int when set
         self.sym = znum2sym.z2sym(self.z) #atomic symbol
-    
+
+    def copy(self):
+        new = Atom(self.id, self.z, self.coord[0], self.coord[1], self.coord[2])
+        new.vp = copy.deepcopy(self.vp)
+        new.neighs = self.neighs[:]
+        new.cn = self.cn
+        new.sym = self.sym
+        return new
 
     def __eq__(self,item):
         #if( self.id == item.id and self.z == item.z and self.coord == item.coord):
         if( self.z == item.z and self.coord == item.coord):
+        #if( self.z == item.z and round(self.coord[0],10) == round(item.coord[0],10) and round(self.coord[1],10) == round(item.coord[1],10) and round(self.coord[2],10) == round(item.coord[2],10)):
             return True
         else:
             return False
@@ -44,8 +53,8 @@ class Atom(object):
         return not self == item
 
     def __repr__(self):
-        return str(self.id)
-        #return str(self.id)+'\t'+str(self.z)+'\t('+str(round(self.coord[0],3))+','+str(round(self.coord[1],3))+','+str(round(self.coord[2],3))+')'
+        #return str(self.id)
+        return str(self.id)+'\t'+str(self.z)+'\t('+str(round(self.coord[0],3))+','+str(round(self.coord[1],3))+','+str(round(self.coord[2],3))+')'
         #return str(self.id)
         #if(type(self.z) != type('hi')):
         #    return str(self.id) + '\t' + str(self.z) + '\t' + str(self.coord[0]) + '\t' + str(self.coord[1]) + '\t' + str(self.coord[2])

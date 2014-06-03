@@ -45,8 +45,11 @@ def find_nearest_atom(atom,m):
 
 
 def main():
-    #m1 = Model(sys.argv[1])
-    #m2 = Model(sys.argv[2])
+    m1 = Model(sys.argv[1])
+    m2 = Model(sys.argv[2])
+    print("RMS {0}".format(rms_closest(m1,m2)))
+    return
+
     models_prefix = sys.argv[1]
 
     print("Collecting paths and models...")

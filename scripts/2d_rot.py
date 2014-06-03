@@ -6,13 +6,17 @@ from model import Model
 
 def rot(model, arr):
     """ arr should be a 9 element rotation numpy array, which we will reshape here """
-    arr = arr.reshape((3,3))
-    arr = np.linalg.inv(arr)
-    
-    for i,atom in enumerate(model.atoms):
-        old_coord = [atom.coord[0], atom.coord[1], atom.coord[2]]
-        new_coord = np.dot(np.asarray(old_coord), arr)
-        atom.set_coord(new_coord[0],new_coord[1],0)#new_coord[2])
+    if( all( i == 0 for i in arr )):
+        for i,atom in enumerate(model.atoms):
+            atom.set_coord(atom.coord[0],atom.coord[1],0)
+    else:
+        arr = arr.reshape((3,3))
+        arr = np.linalg.inv(arr)
+        
+        for i,atom in enumerate(model.atoms):
+            old_coord = [atom.coord[0], atom.coord[1], atom.coord[2]]
+            new_coord = np.dot(np.asarray(old_coord), arr)
+            atom.set_coord(new_coord[0],new_coord[1],0)#new_coord[2])
 
 def main():
     modelfile = sys.argv[1]
@@ -55,7 +59,7 @@ def main():
     #rot_arr = [0.235445, 0.089792, 0.967731, -0.967993, 0.110713, 0.225236, -0.086917, -0.989788, 0.112985]
     #rot_arr = [0.216234, -0.047608, 0.975180,-0.955161, 0.196601, 0.221394,-0.202262, -0.979327, -0.002961]
     # BELOW: t3 - 0 rot
-    rot_arr = [ 0.984104, 0.007169, -0.177450, 0.008311, 0.996231, 0.086340, 0.177400, -0.086442, 0.980335]
+    #rot_arr = [ 0.984104, 0.007169, -0.177450, 0.008311, 0.996231, 0.086340, 0.177400, -0.086442, 0.980335]
     #rot_arr = [ 0.983102, -0.003388, -0.183028, 0.003365, 0.999994, -0.000437, 0.183028, -0.000187, 0.983108]
     
     # Pei's t2
@@ -70,6 +74,17 @@ def main():
     #rot_arr = [ -0.181186, -0.653769, -0.734682, -0.632103, 0.649717, -0.422273, 0.753404, 0.387885, -0.530968] #1rot
     #rot_arr = [ -0.408942, 0.873456, 0.264275, -0.252622, -0.386635, 0.886959, 0.876897, 0.295953, 0.378765] #2rot
     #rot_arr = [ -0.243749, -0.741828, -0.624722, -0.637231, 0.608094, -0.473453, 0.731111, 0.282689, -0.620938] #3rot
+
+    # JWH's t1
+    #rot_arr = [ 0.915013, -0.004459, -0.403401, -0.010527, 0.999335, -0.034924, 0.403288, 0.036202, 0.914357]
+    # JWH's t2
+    #rot_arr = [ 0.983576, 0.009003, -0.180268, 0.010862, 0.993992, 0.108912, 0.180165, -0.109081, 0.977569]
+    #JWH's t3
+    #rot_arr = [ 0.985667, 0.014122, 0.168112, -0.020755, 0.999071, 0.037763, -0.167422, -0.040711, 0.985044]
+    #JWH's t3 all.xtal cluster
+    #rot_arr = [ 0.985237, 0.004144, 0.171146, -0.008192, 0.999703, 0.022952, -0.171000, -0.024015, 0.984978] 
+
+    rot_arr = [0,0,0,0,0,0,0,0,0]
 
     npra = np.asarray(rot_arr)
     rot(m,npra)
