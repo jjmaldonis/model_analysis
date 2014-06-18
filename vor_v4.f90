@@ -369,19 +369,22 @@ subroutine vtanal!(maxcan, maxver, maxepf, natoms, world_size, noi, nc, nf, ne, 
         tleng = 0.0
         area = 0.0
 
+        !do ic=1,nc
+        !    write(*,*) nepf(ic)
+        !    do ie=1,nepf(ic)
+        !        write(*,*) ie,ic,nloop(ie,ic)
+        !    enddo
+        !enddo
+
         do ic=1, nc
             if(nepf(ic) .ne. 0) then
                 do ie = 1, nepf(ic)
                     if(ie .eq. nepf(ic)) then
                         iv = nloop(ie, ic)
                         i1 = nloop(1, ic)
-                        !if(.not. connect(iv, i1)) then
-                        !endif
                     else if(ie .eq. nepf(ic)-1) then
                         iv = nloop(ie, ic)
                         iv1 = nloop(ie+1, ic)
-                        !if(.not. connect(iv, iv1)) then
-                        !endif
                     else
                         iv = nloop(ie, ic)
                         iv1 = nloop(ie+1, ic)
@@ -393,8 +396,6 @@ subroutine vtanal!(maxcan, maxver, maxepf, natoms, world_size, noi, nc, nf, ne, 
                                     nloop(je, ic) = iv1
                                     exit
                                 endif
-                                !if(je .eq. nepf(ic)) then
-                                !endif
                             enddo
                         endif
                     endif
@@ -402,10 +403,16 @@ subroutine vtanal!(maxcan, maxver, maxepf, natoms, world_size, noi, nc, nf, ne, 
             endif
         enddo
 
+        !do ic=1,nc
+        !    write(*,*) nepf(ic)
+        !    do ie=1,nepf(ic)
+        !        write(*,*) ie,ic,nloop(ie,ic)
+        !    enddo
+        !enddo
+
         do ic=1, nc
             if(nepf(ic) .ne. 0) then
                 do j=1, nepf(ic)
-                    !write(*,*) "DBEUG-3",ic-1,j-1
                     ivs = nloop(j, ic)
                     if(j.eq.nepf(ic))then
                         ive = nloop(1,ic)
@@ -420,17 +427,9 @@ subroutine vtanal!(maxcan, maxver, maxepf, natoms, world_size, noi, nc, nf, ne, 
                     x2 = v(ive,1) - v(nloop(1,ic),1)
                     y2 = v(ive,2) - v(nloop(1,ic),2)
                     z2 = v(ive,3) - v(nloop(1,ic),3)
-                    !write(*,*) "DEBUG0",ic,nloop(1,ic),v(ivs,1),v(nloop(1,ic),1)
-                    !write(*,*) "DEBUG1",ic,nloop(1,ic),v(ivs,2),v(nloop(1,ic),2)
-                    !write(*,*) "DEBUG2",ic,nloop(1,ic),v(ivs,3),v(nloop(1,ic),3)
                     area(ic) = area(ic) + 0.5*sqrt( (y1*z2-z1*y2)**2 + (z1*x2-z2*x1)**2 + (x1*y2-x2*y1)**2 )
-                    !write(*,*) 'DEBUG-2',x1,y1,z1,x2,y2,z2
-                    !write(*,*) 'DEBUG-1',(y1*z2-z1*y2)**2,(z1*x2-z2*x1)**2,(x1*y2-x2*y1)**2
-                    !write(*,*) ic-1,j-1,ivs-1,ive-1
-                    !write(*,*) ic-1,j-1,nloop(1,ic)-1
-                    !write(*,*) 'DEBUG0',ic,j,0.5*sqrt( (y1*z2-z1*y2)**2 + (z1*x2-z2*x1)**2 + (x1*y2-x2*y1)**2 )
                 enddo
-                !write(*,*) "DEBUG1",area(ic)
+                !write(*,*) area(ic)
                 tarea = tarea + area(ic)
                 vvol(i) = vvol(i)+area(ic)*sqrt(p(ic,4))/6
             endif
@@ -666,17 +665,21 @@ subroutine work!(maxver, maxepf, noi, nc, tol, p, v, nepf, nloop, mvijk, nv, nf,
     nepf = 0
     nloop = 0
     !write(*,*) "Number of vertices = ", nv
+    !call sleep(1)
     do iv=1, nv ! mvijk is set in the loop above.
         nepf(mvijk(iv,1)) = nepf(mvijk(iv,1)) + 1
         nepf(mvijk(iv,2)) = nepf(mvijk(iv,2)) + 1
         nepf(mvijk(iv,3)) = nepf(mvijk(iv,3)) + 1
+        !write(*,*) nepf(mvijk(iv,1)),nepf(mvijk(iv,2)),nepf(mvijk(iv,3)) !TODO
         if(nepf(mvijk(iv,1)).gt.maxepf) stop 'epf>maxepf'
         if(nepf(mvijk(iv,2)).gt.maxepf) stop 'epf>maxepf'
         if(nepf(mvijk(iv,3)).gt.maxepf) stop 'epf>maxepf'
         nloop(nepf(mvijk(iv,1)),mvijk(iv,1)) = iv
         nloop(nepf(mvijk(iv,2)),mvijk(iv,2)) = iv
         nloop(nepf(mvijk(iv,3)),mvijk(iv,3)) = iv
+        !write(*,*) nepf(mvijk(iv,1)),mvijk(iv,1),nloop(nepf(mvijk(iv,1)),mvijk(iv,1))
     enddo
+    !write(*,*) nloop
 
     nf = 0
     ne = 0

@@ -5,7 +5,8 @@ import string
 import subprocess
 
 class Vor(object):
-    """ Basically this is a python script that I will use to call and store into memory the outputs from the voronoi.f90 code. It won't be pretty but it should work. """
+    """ This class runs the fortran voronoi code, which you should compile and link into your bin.
+        It will automatically generate a parameter file (*.vparm) used to run the code. """
 
     def __init__(self):
         """ constructor """
@@ -68,7 +69,7 @@ class Vor(object):
         opf.write(self.gen_paramfile(modelfile,cutoff))
         opf.close()
 
-        p = subprocess.Popen(['/export/home/jjmaldonis/OdieCode/vor/vor',self.randstr+'.vparm',modelfile,self.randstr], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        p = subprocess.Popen(['/home/jjmaldonis/bin/vor',self.randstr+'.vparm',modelfile,self.randstr], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.poutput = p.stdout.read()
         self.perr = p.stderr.read()
         self.preturncode = p.wait()
