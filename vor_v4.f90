@@ -427,7 +427,7 @@ subroutine vtanal!(maxcan, maxver, maxepf, natoms, world_size, noi, nc, nf, ne, 
                     !write(*,*) 'DEBUG-2',x1,y1,z1,x2,y2,z2
                     !write(*,*) 'DEBUG-1',(y1*z2-z1*y2)**2,(z1*x2-z2*x1)**2,(x1*y2-x2*y1)**2
                     !write(*,*) ic-1,j-1,ivs-1,ive-1
-                    write(*,*) ic-1,j-1,nloop(1,ic)-1
+                    !write(*,*) ic-1,j-1,nloop(1,ic)-1
                     !write(*,*) 'DEBUG0',ic,j,0.5*sqrt( (y1*z2-z1*y2)**2 + (z1*x2-z2*x1)**2 + (x1*y2-x2*y1)**2 )
                 enddo
                 !write(*,*) "DEBUG1",area(ic)
@@ -685,9 +685,9 @@ subroutine work!(maxver, maxepf, noi, nc, tol, p, v, nepf, nloop, mvijk, nv, nf,
         ne = ne + nepf(i)
     enddo
     if(mod(ne,2).ne.0)then
-        write(*,*)ne
+        write(*,*)"ne=", ne
         do iv=1,nv
-            write(*,*)mvijk(iv,:)
+            write(*,*)"mvijk(iv,:)=", mvijk(iv,:)
         enddo
     endif
     ne = ne/2
