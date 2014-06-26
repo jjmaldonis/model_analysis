@@ -1,11 +1,10 @@
 import sys
-from model import Model
+from basic_model import Model
 from hutch import Hutch
 from atom import Atom
 from atom_graph import AtomGraph
 from vor import Vor
 import categorize_vor
-import numpy as np
 
 
 def nnnic(atom,model,cluster):
