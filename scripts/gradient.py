@@ -3,7 +3,7 @@ from vor import Vor
 from model import Model
 
 
-def generate_map(self,cutoff,modelfile):
+def generate_map(cutoff,modelfile):
     """ cutoff is for vor.f90 """
     vor_instance = Vor()
     vor_instance.runall(modelfile,cutoff)
@@ -57,13 +57,13 @@ def icofrac(m, modelfile, cutoff):
         bin = int( (float(atom.vp.index[2])/float(sum(atom.vp.index))*100.0) /(100.0/(nbins-1)))
         atom.z = bin+1
     fracs.sort()
-    print('Min %: {0}. Max %: {1}'.format(min(fracs),max(fracs)))
+    #print('Min %: {0}. Max %: {1}'.format(min(fracs),max(fracs)))
 
 def main():
     modelfile = sys.argv[1]
     m = Model(modelfile)
     icofrac(m,modelfile,3.5)
-    #m.write_real_xyz()
+    m.write_real_xyz()
     #generate_map(3.5,sys.argv[1])
 
 if __name__ == "__main__":

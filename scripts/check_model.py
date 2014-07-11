@@ -11,18 +11,31 @@ from pprint import pprint
 #        super(Checks,self).__init__()
 
 def check_dists(model):
-    dists = model.get_all_dists()
-    dists = [dist[2] for dist in dists]
-    print("Minimimum atomic spacing: {0}\n".format(min(dists)))
+    #print("Checkings dists..")
+    m = float("inf")
+    for i,atomi in enumerate(model.atoms):
+        #if(i%model.natoms == 0): sys.stdout.write("{0}%..".format(i/model.natoms))
+        for atomj in model.atoms[model.atoms.index(atomi)+1:]:
+            d = model.dist(atomi,atomj)
+            if(d < m): m = d
+    print("\nMinimimum atomic spacing: {0}\n".format(m))
 
 def atoms_in_box(model):
     for atom in model.atoms:
-        if( atom.coord[0] < -model.lx/2): raise Exception('ERROR! Atom {0} is out of your box!'.format(atom))
-        if( atom.coord[0] > model.lx/2): raise Exception('ERROR! Atom {0} is out of your box!'.format(atom))
-        if( atom.coord[1] < -model.ly/2): raise Exception('ERROR! Atom {0} is out of your box!'.format(atom))
-        if( atom.coord[1] > model.ly/2): raise Exception('ERROR! Atom {0} is out of your box!'.format(atom))
-        if( atom.coord[2] < -model.lz/2): raise Exception('ERROR! Atom {0} is out of your box!'.format(atom))
-        if( atom.coord[2] > model.lz/2): raise Exception('ERROR! Atom {0} is out of your box!'.format(atom))
+        #if( atom.coord[0] < -model.lx/2): raise Exception('ERROR! Atom {0} is out of your box!'.format(atom))
+        #if( atom.coord[0] > model.lx/2): raise Exception('ERROR! Atom {0} is out of your box!'.format(atom))
+        #if( atom.coord[1] < -model.ly/2): raise Exception('ERROR! Atom {0} is out of your box!'.format(atom))
+        #if( atom.coord[1] > model.ly/2): raise Exception('ERROR! Atom {0} is out of your box!'.format(atom))
+        #if( atom.coord[2] < -model.lz/2): raise Exception('ERROR! Atom {0} is out of your box!'.format(atom))
+        #if( atom.coord[2] > model.lz/2): raise Exception('ERROR! Atom {0} is out of your box!'.format(atom))
+
+        if( atom.coord[0] < -model.lx/2 or
+            atom.coord[0] > model.lx/2 or
+            atom.coord[1] < -model.ly/2 or
+            atom.coord[1] > model.ly/2 or
+            atom.coord[2] < -model.lz/2 or
+            atom.coord[2] > model.lz/2):
+            raise Exception('ERROR! Atom {0} is out of your box! Coord: {1} Box: {2}'.format(atom,atom.coord,(model.lx/2,model.ly/2,model.lz/2)))
     print("\nYour atom coords are all inside the box.\n")
 
 def atom_density(model):

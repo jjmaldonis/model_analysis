@@ -66,9 +66,15 @@ def vp_analysis(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol):
                 rijsq = rxij**2 + ryij**2 + rzij**2
                 # Select all atoms within cutoff of atomi
                 # Can set a cutoff for each species, but I dont implement it.
-                if(rijsq < cutoff**2):
-                    p.append([rxij, ryij, rzij, rijsq]) # I dont know why we save this information, but it is the distance information
-                    mtag.append(j) #???
+                try:
+                    thiscut = cutoff[(atomi.z,atomj.z)]
+                    if(rijsq < thiscut**2):
+                        p.append([rxij, ryij, rzij, rijsq]) # I dont know why we save this information, but it is the distance information
+                        mtag.append(j) #???
+                except TypeError:
+                    if(rijsq < cutoff**2):
+                        p.append([rxij, ryij, rzij, rijsq]) # I dont know why we save this information, but it is the distance information
+                        mtag.append(j) #???
 
         # Candidates have been selected
         nc = len(p)
@@ -369,9 +375,20 @@ def connect(i,j,mvijk):
 
 
 def main():
+    # NOTE: Cutoff can either be a single integer or it
+    # can be a dictionary where the keys are two-tuples
+    # of atomic numbers (e.g. (40,13)=3.5 for Zr,Al).
     modelfile = sys.argv[1]
-    cutoff = float(sys.argv[2])
     m = Model(modelfile)
+    try:
+        cut = float(sys.argv[2])
+        cutoff = {}
+        for z1 in m.atomtypes:
+            for z2 in m.atomtypes:
+                cutoff[(z1,z2)] = cut
+                cutoff[(z2,z1)] = cut
+    except:
+        print("You didn't input a cutoff so you much define it in the code.")
     voronoi_3d(m,cutoff)
     print_data(m)
 

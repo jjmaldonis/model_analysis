@@ -112,16 +112,20 @@ class Vor(object):
         index = [line.strip().split() for line in self.index]
         if('nneighs,' in index[0]): index.pop(0)
         for line in index:
-            if(len(line) != 15):
-                line.append(line[-1])
-                line[-2] = 0
-            atom = int(line[0])
-            vol = float(line[-1])
-            inds = line[6:14]
-            inds = [int(x) for x in inds]
-            model.atoms[atom].vp.vol = vol
-            model.atoms[atom].vp.index = inds
-            model.atoms[atom].cn = sum(inds)
+            if('id,znum,nneighs,nneighst1,nneighst2,nneighs3,n3,n4,n5,n6,n7,n8,n9,n10,vol' not in line):
+                if(len(line) != 15):
+                    line.append(line[-1])
+                    line[-2] = 0
+                atom = int(line[0])
+                try:
+                    vol = float(line[-1])
+                except ValueError:
+                    pass
+                inds = line[6:14]
+                inds = [int(x) for x in inds]
+                model.atoms[atom].vp.vol = vol
+                model.atoms[atom].vp.index = inds
+                model.atoms[atom].cn = sum(inds)
 
 
 def main():

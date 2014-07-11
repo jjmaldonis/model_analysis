@@ -27,7 +27,7 @@ def main():
     m = Model(modelfile)
 
     recenter_model(m)
-    m.write_real_xyz()
+    m.write_our_xyz()
 
 if __name__ == "__main__":
     main()

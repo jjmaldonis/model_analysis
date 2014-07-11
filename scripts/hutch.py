@@ -14,7 +14,7 @@ class Hutch(object):
             raise Exception("The model must be a cube!")
         super(Hutch, self).__init__()
         # Set basic self variables
-        self.nhutchs = int(round(model.natoms**(1.0/3.0)))
+        self.nhutchs = max(int(round(model.natoms**(1.0/3.0))),1)
         self.hutchsize = model.lx/self.nhutchs
         self.lx = model.lx
         self.ly = model.ly

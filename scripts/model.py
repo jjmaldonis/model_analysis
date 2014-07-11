@@ -38,7 +38,7 @@ class Model(object):
         super(Model,self).__init__()
         if(len(args) == 1):
             modelfile = args[0]
-            if modelfile[-4:] == '.xyz':
+            if(modelfile[-4:] == '.xyz' or '.' not in modelfile):
                 self.read_xyz(modelfile)
             elif modelfile[-4:] == '.dat':
                 self.read_dat(modelfile)
@@ -67,6 +67,7 @@ class Model(object):
             content = f.readlines()
 
         self.comment = content.pop(0) # Comment line
+        if('' == content[-1].strip()): content.pop(-1)
         if('-1' in content[-1] and '.' not in content[-1]): # '-1' line
             content.pop(-1)
         self.lx,self.ly,self.lz = tuple([float(x) for x in content.pop(0).strip().split()])
@@ -84,9 +85,7 @@ class Model(object):
                         pass
         self.atoms = []
         for i,atom in enumerate(content):
-            self.atoms.append(Atom(i,atom[0],atom[1],atom[2],atom[3]))
-            #if type(self.atoms[i].z) == type('hi'):
-            #    self.atoms[i].z = znum2sym.sym2z(self.atoms[i].z)
+            self.atoms.append(Atom(i,atom[0],round(atom[1],10),round(atom[2],10),round(atom[3],10)))
 
     def read_dat(self,modelfile):
         with open(modelfile) as f:

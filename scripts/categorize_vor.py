@@ -68,20 +68,21 @@ def generate_atom_dict(indexes,vp_dict):
 
     # Sort atoms, putting them in their correct dictionary place
     for line in indexes:
-        for key in vp_dict:
-            for vps in vp_dict[key]:
-                found = True
-                for i in range(0,4):
-                    if(vps[i] != '*' and vps[i] != line[i+6]):
-                        found = False
-                if(found):
-                    atom_dict[key].append(line)
-        found = False
-        for key in vp_dict:
-            if line in atom_dict[key]:
-                found = True
-        if not found:
-            atom_dict["Undef:"].append(line)
+        if('id,znum,nneighs,nneighst1,nneighst2,nneighs3,n3,n4,n5,n6,n7,n8,n9,n10,vol' not in line):
+            for key in vp_dict:
+                for vps in vp_dict[key]:
+                    found = True
+                    for i in range(0,4):
+                        if(vps[i] != '*' and vps[i] != line[i+6]):
+                            found = False
+                    if(found):
+                        atom_dict[key].append(line)
+            found = False
+            for key in vp_dict:
+                if line in atom_dict[key]:
+                    found = True
+            if not found:
+                atom_dict["Undef:"].append(line)
     return atom_dict
 
 
@@ -180,8 +181,8 @@ def main():
     #if(len(sys.argv) <= 2): sys.exit("\nERROR! Fix your inputs!\n\nArg 1:  input param file detailing each voronoi 'structure'.\nShould be of the form:\nCrystal:\n    0,2,8,*\n\nArg2: an _index.out file.\n\nOutput is printed to screen.")
     if(len(sys.argv) <= 2): sys.exit("\nERROR! Fix your inputs!\n\nArg 1:  input param file detailing each voronoi 'structure'.\nShould be of the form:\nCrystal:\n    0,2,8,*\n\nArg2: a model file.\n\nOutput is printed to screen.")
 
-    modelfile = sys.argv[2]
     paramfile = sys.argv[1]
+    modelfile = sys.argv[2]
 
     m = Model(modelfile)
 
@@ -198,13 +199,22 @@ def main():
 
     set_atom_vp_types(m,vp_dict)
 
+    index = 0
+    m.generate_neighbors(3.5)
+    for atom in m.atoms:
+        if(atom.vp.index[0:4] == [0, 0, 12, 0]):
+            temp_model = Model("comment", m.lx, m.ly, m.lz, atom.neighs+[atom])
+            temp_model.write_cif("temp{0}.cif".format(index))
+            index += 1
+            print("temp{0}.cif".format(index))
+
     #print("Undefined indexes:")
     #for atom in m.atoms:
     #    if atom.vp.type == "Undef":
     #        print("{0} {1} {2}".format(atom.id,atom.z,atom.vp.index))
 
-    print_all(m)
-    vor_stats(m) # Prints what you probably want
+    #print_all(m)
+    #vor_stats(m) # Prints what you probably want
 
 
 if __name__ == "__main__":

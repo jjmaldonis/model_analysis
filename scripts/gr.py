@@ -90,26 +90,26 @@ def main():
     cutoffs = generate_cutoffs(m)
     print(cutoffs)
 
-    ## This block of code saves all the gr's to gr.txt
-    #outcontent = []
-    #types = list(m.atomtypes)
-    #for L in range(1,len(types)+1):
-    #    for subset in itertools.combinations(types, L):
-    #        print(subset)
-    #        s = list(subset)
-    #        x,g = gr(m,types=s)
-    #        g = list(g)
-    #        s = [znum2sym.z2sym(y) for y in s]
-    #        g.insert(0,'gr_{0}'.format('_'.join(s)))
-    #        outcontent.append(g)
-    #print("Writing output to gr.txt.")
-    #x = list(x)
-    #x.insert(0,'dr')
-    #outcontent.insert(0,x)
-    #outcontent = [ [str(y) for y in x] for x in zip(*outcontent)]
-    #of = open('gr.txt','w')
-    #for i in xrange(0,len(outcontent)):
-    #    of.write(' '.join(outcontent[i])+'\n')
+    # This block of code saves all the gr's to gr.txt
+    outcontent = []
+    types = list(m.atomtypes)
+    for L in range(1,len(types)+1):
+        for subset in itertools.combinations(types, L):
+            print(subset)
+            s = list(subset)
+            x,g = gr(m,types=s)
+            g = list(g)
+            s = [znum2sym.z2sym(y) for y in s]
+            g.insert(0,'gr_{0}'.format('_'.join(s)))
+            outcontent.append(g)
+    print("Writing output to gr.txt.")
+    x = list(x)
+    x.insert(0,'dr')
+    outcontent.insert(0,x)
+    outcontent = [ [str(y) for y in x] for x in zip(*outcontent)]
+    of = open('gr.txt','w')
+    for i in xrange(0,len(outcontent)):
+        of.write(' '.join(outcontent[i])+'\n')
 
     ##outcontent = [ [ float(x) for x in l] for l in outcontent[1:]]
     #outcontent = [ [float(y) for y in x] for x in zip(*outcontent[1:])]

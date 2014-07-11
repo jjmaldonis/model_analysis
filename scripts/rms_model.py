@@ -63,7 +63,7 @@ def main():
         if models_prefix[models_prefix.rfind('/')+1:] in file:
             modelfiles.append(path+file)
     print("Sorting by filename...")
-    modelfiles.sort()
+    modelfiles.sort(key=lambda s: int(s.split('_')[3][:-4]))
     
     m1 = Model(modelfiles[0])
 

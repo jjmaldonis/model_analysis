@@ -1,18 +1,26 @@
 import numpy as np
 import sys
-
 from model import Model
+from math import cos, sin, acos, sqrt
 
+def calc_rot_array(t1,t2,t3):
+    """ We construct the rotation matrix based on t1,t2,t3
+        NOTE! Order matters! """
+    rx = np.array( [ [1,0,0], [0,cos(t1),-sin(t1)], [0,sin(t1),cos(t1)] ] )
+    ry = np.array( [ [cos(t2),0,sin(t2)], [0,1,0], [-sin(t2),0,cos(t2)] ] )
+    rz = np.array( [ [cos(t3),-sin(t3),0], [sin(t3),cos(t3),0], [0,0,1] ] )
+    arr = np.dot( np.dot(ry,rx) ,rz)
+    #return arr
+    return np.linalg.inv(arr)
 
 def rot(model, arr):
     """ arr should be a 9 element rotation numpy array, which we will reshape here """
-    if( all( i == 0 for i in arr )):
+    arr = arr.reshape((3,3))
+    arr = np.linalg.inv(arr)
+    if( all( i == 0 for elem in arr for i in elem )):
         for i,atom in enumerate(model.atoms):
             atom.set_coord(atom.coord[0],atom.coord[1],0)
     else:
-        arr = arr.reshape((3,3))
-        arr = np.linalg.inv(arr)
-        
         for i,atom in enumerate(model.atoms):
             old_coord = [atom.coord[0], atom.coord[1], atom.coord[2]]
             new_coord = np.dot(np.asarray(old_coord), arr)
@@ -59,7 +67,7 @@ def main():
     #rot_arr = [0.235445, 0.089792, 0.967731, -0.967993, 0.110713, 0.225236, -0.086917, -0.989788, 0.112985]
     #rot_arr = [0.216234, -0.047608, 0.975180,-0.955161, 0.196601, 0.221394,-0.202262, -0.979327, -0.002961]
     # BELOW: t3 - 0 rot
-    #rot_arr = [ 0.984104, 0.007169, -0.177450, 0.008311, 0.996231, 0.086340, 0.177400, -0.086442, 0.980335]
+    rot_arr = [ 0.984104, 0.007169, -0.177450, 0.008311, 0.996231, 0.086340, 0.177400, -0.086442, 0.980335] # Pei t3 0 rot
     #rot_arr = [ 0.983102, -0.003388, -0.183028, 0.003365, 0.999994, -0.000437, 0.183028, -0.000187, 0.983108]
     
     # Pei's t2
@@ -84,7 +92,18 @@ def main():
     #JWH's t3 all.xtal cluster
     #rot_arr = [ 0.985237, 0.004144, 0.171146, -0.008192, 0.999703, 0.022952, -0.171000, -0.024015, 0.984978] 
 
-    rot_arr = [0,0,0,0,0,0,0,0,0]
+    # 10k Zr50 model, rotated to see cluster in bottom right corner.
+    #rot_arr = [ 0.985669, -0.008419, -0.168483, -0.000875, 0.998485, -0.055012, 0.168691, 0.054371, 0.984168]
+
+    #rot_arr = [1,0,0,0,1,0,0,0,1]
+
+    #kx = 0.3046888
+    #ky = -0.0234376
+    #kz = 0.2578136
+    #kmag = sqrt(kx**2+ky**2+kz**2)
+    #print(kx,ky,kz,kmag)
+    #rot_arr = calc_rot_array(acos(kx/kmag),acos(ky/kmag),acos(kz/kmag))
+    #print(rot_arr)
 
     npra = np.asarray(rot_arr)
     rot(m,npra)
@@ -92,6 +111,7 @@ def main():
     # Write cif file to screen
     m.write_cif(outfilebase+'.cif')
     m.write_our_xyz(outfilebase+'.xyz')
+    #m.write_our_xyz()
 
 if __name__ == "__main__":
     main()

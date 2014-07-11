@@ -96,6 +96,16 @@ def rdf_2d(m,dr):
     # and go through rx and ry simultaneously, incrementing the matrix
     # index if an rx,ry pair falls in that spot. Contour plot the matrix.
 
+
+    # Pseudocode
+    #grid = Zeros(100,100)
+    #for atomi in model:
+    #    for atomj in model:
+    #        if(atomi != atomj):
+    #            rx = xdist(atomi,atomj)
+    #            ry = ydist(atomi,atomj)
+    #            grid[rx][ry] += 1
+
     size = int(np.ceil(m.lx/dr))
     #print("Initializing matrix: {0}x{1}".format(size,size))
     hist2d = np.zeros((size,size),dtype=np.int)
@@ -147,13 +157,12 @@ def rdf_2d(m,dr):
     #print(hist2d.tolist())
 
     # Here we find where the peaks occur, using detected_peaks.
-    dr_blurred = m.lx/len(hist2d)
-    peak_indexes = [[i*dr_blurred,j*dr_blurred] for i,ilist in enumerate(detected_peaks) for j,val in enumerate(detected_peaks[i]) if detected_peaks[i][j] == True]
+    peak_indexes = [[i*dr,j*dr] for i,ilist in enumerate(detected_peaks) for j,val in enumerate(detected_peaks[i]) if detected_peaks[i][j] == True]
     #for peak in peak_indexes:
     #    print(peak)
     # Calculate all the distances between a peak and the 0-peak.
     # First find the 0-peak.
-    center = len(hist2d)*dr_blurred/2.0
+    center = len(hist2d)*dr/2.0
     dmin = 100000000.0
     for ind in peak_indexes:
         d = math.sqrt( (center-ind[0])**2 + (center-ind[1])**2 )
@@ -164,7 +173,7 @@ def rdf_2d(m,dr):
     peak_dists = scipy.spatial.distance.cdist([peak_indexes[center_peak]], peak_indexes, 'euclidean')
     #peak_dists = [ x for x in peak_dists if x < 4.0 ]
     peak_dists.sort()
-    #print(peak_dists)
+    print("Guess at plane spacings:")
     for x in peak_dists[0]: print(x)
 
     # Create a model out of the peak_indexes to do a BAD on
@@ -177,6 +186,7 @@ def rdf_2d(m,dr):
     badmodel = Model('eh',m.lx,m.ly,m.lz, atoms)
     badmodel.generate_neighbors(4.0)
     g = bad(badmodel,180)
+    print("Bond angle distribution:")
     for i in range(0,len(g[0])):
         print('{0}\t{1}'.format(g[0][i],g[1][i]))
 
@@ -264,8 +274,10 @@ def main():
     # the pixel size to 0.1 Ang (or whatever it is below), and use the
     # distance tool to measure the peak distances.
     m = Model(sys.argv[1])
-    #hist2d,blurred_hist2d = rdf_2d(m,0.1)
-    hist2d,blurred_hist2d = rdf_2d(m,0.075)
+    dr = 0.1
+    dr = 0.075
+    #dr = 0.05
+    hist2d,blurred_hist2d = rdf_2d(m,dr)
     #print(hist2d.tolist())
     #print(peak_dist_hist[0].tolist()) # histogram
     #print(peak_dist_hist[1].tolist()) # bin edges
@@ -277,18 +289,6 @@ def main():
     for i,l in enumerate(hist2d[extra:-extra]):
         for j,x in enumerate(l[extra:-extra]):
             reformed_hist2d[i][j] = x
-    #reformed_blurred = np.zeros((len(hist2d),len(hist2d[0])))
-    #extra = ( len(hist2d) - len(blurred_hist2d) )/2
-    #background = 0.0
-    #for i,l in enumerate(blurred_hist2d):
-    #    background += (l[0] + l[-1])/2
-    #background /= len(blurred_hist2d)
-    #background *= 0.90
-    #print('background={0}'.format(background))
-    #reformed_blurred.fill(background)
-    #for i,l in enumerate(blurred_hist2d):
-    #    for j,x in enumerate(l):
-    #        reformed_blurred[i+extra][j+extra] = x
 
     # Save files as igor wave text files
     outfile = '2d_rot_matrix.txt'
@@ -297,7 +297,7 @@ def main():
     for subwave in reformed_hist2d.tolist():
         of.write('\t{0}\n'.format("\t".join(str(x) for x in subwave)))
     of.write('END\n')
-    of.write('X SetScale/I x -{1},{1},"", {0}; SetScale/I y -{2},{2},"", {0}; SetScale/I z -{3},{3},"", {0}\n'.format('unblurred',m.lx/2.0,m.ly/2.0,m.lz/2.0))
+    of.write('X SetScale/I x -{1},{1},"", {0}; SetScale/I y -{2},{2},"", {0}; SetScale/I z -{3},{3},"", {0}\n'.format('unblurred',m.lx/2.0-extra*dr,m.ly/2.0-extra*dr,m.lz/2.0-extra*dr))
     of.close()
 
     outfile = '2d_rot_matrix_blurred.txt'
@@ -308,7 +308,8 @@ def main():
     #for subwave in reformed_hist2d.tolist():
         of.write('\t{0}\n'.format("\t".join(str(x) for x in subwave)))
     of.write('END\n')
-    of.write('X SetScale/I x -{1},{1},"", {0}; SetScale/I y -{2},{2},"", {0}; SetScale/I z -{3},{3},"", {0}\n'.format('blurred',m.lx/2.0,m.ly/2.0,m.lz/2.0))
+    of.write('X SetScale/I x -{1},{1},"", {0}; SetScale/I y -{2},{2},"", {0}; SetScale/I z -{3},{3},"", {0}\n'.format('blurred',m.lx/2.0-extra*dr,m.ly/2.0-extra*dr,m.lz/2.0-extra*dr))
+    #of.write('X SetScale/I x -{1},{1},"", {0}; SetScale/I y -{2},{2},"", {0}; SetScale/I z -{3},{3},"", {0}\n'.format('blurred',m.lx/2.0,m.ly/2.0,m.lz/2.0))
     of.close()
 
     ## A first attempt at rotating the model and finding interesting things.

@@ -9,9 +9,10 @@ import sys
 def main():
     modelfile = sys.argv[1]
     m = Model(modelfile)
+    extension = modelfile[-3:]
 
     modelfile = modelfile[modelfile.rfind('/')+1:]
-    modelfile = modelfile[:-4]+'.dat'
+    modelfile = modelfile[:-4]+extension
     #print(modelfile)
     m.write_dat('temp.dat')
 
