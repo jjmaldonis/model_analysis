@@ -3,10 +3,7 @@ import sys
 from basic_model import Model
 import math
 
-def main():
-    modelfile = sys.argv[1]
-    intensityfile = sys.argv[2]
-
+def atom_selection(modelfile, intensityfile, outbase=None):
     npix = 256
     #intensities = np.zeros((npix,npix,npix),dtype=float)
     intensities = [[[0.0 for i in range(npix)] for i in range(npix)] for i in range(npix)]
@@ -42,10 +39,18 @@ def main():
     stdev = math.sqrt(stdev/len(ints))
     print("Stdev: {0}".format(stdev))
     mini = mean + stdev/2.0
+    print("Accepting atoms with intensity above {0}".format(mini))
     atoms = [atom for atom in m.atoms if atom.intensity > mini]
-    Model(m.comment,m.lx,m.ly,m.lz,atoms).write_cif('temp.cif')
-    Model(m.comment,m.lx,m.ly,m.lz,atoms).write_our_xyz('temp.xyz')
+    print("Found {0} atoms".format(len(atoms)))
+    if(outbase == None):
+        outbase = 'temp'
+    Model(m.comment,m.lx,m.ly,m.lz,atoms).write_cif(outbase+'.cif')
+    Model(m.comment,m.lx,m.ly,m.lz,atoms).write_our_xyz(outbase+'.xyz')
 
+def main():
+    modelfile = sys.argv[1]
+    intensityfile = sys.argv[2]
+    atom_selection(modelfile, intensityfile)
 
 
 if __name__ == '__main__':
