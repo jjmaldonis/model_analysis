@@ -1,7 +1,46 @@
 import sys
 import numpy as np
 from model import Model
-from math import cos, sin
+from math import cos, sin, atan2, sqrt
+
+def rotate(m, a, axis):
+    # This is rot from http://www.ks.uiuc.edu/Research/vmd/doxygen/Matrix4_8C-source.html
+    # a is the angle in degrees
+    mat = [[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0]]
+    angle = a*np.pi/180.0 # in radians
+    if(axis == 'x'):
+        mat = [[1,0,0],[0,cos(angle),sin(angle)],[0,-sin(angle),cos(angle)]]
+    elif(axis == 'y'):
+        mat = [[cos(angle),0,-sin(angle)],[0,1,0],[sin(angle),0,cos(angle)]]
+    elif(axis == 'z'):
+        mat = [[cos(angle),sin(angle),0],[-sin(angle),cos(angle),0],[0,0,1]]
+    m = np.array(m)
+    mat = np.array(mat)
+    return np.dot(mat,m)
+
+def calc_rot_array_from_hkl(h,k,l):
+    # This is transvecinv from http://www.ks.uiuc.edu/Research/vmd/doxygen/Measure_8C-source.html
+    mat = [[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0]]
+    x = h
+    y = k
+    z = l
+    if(x == 0.0 and y == 0.0):
+        if(z == 0.0):
+            return -1
+        if( z > 0 ):
+            mat = rotate(mat,-90,'y')
+        else:
+            mat = rotate(mat,90,'y')
+        return 0
+    theta = atan2(y,x)
+    length = sqrt(x*x + y*y)
+    phi = atan2(float(z), length)
+    #mat = rotate(mat,phi*180.0/np.pi,'y')
+    #mat = rotate(mat,-theta*180.0/np.pi,'z')
+    mat = rotate(mat,theta*180.0/np.pi,'z')
+    mat = rotate(mat,-phi*180.0/np.pi,'y')
+    return mat
+
 
 def rot(model, arr):
     """ arr should be a 9 element rotation numpy array, which we will reshape here
@@ -28,8 +67,14 @@ def calc_rot_array(t1,t2,t3):
 
 
 def main():
+    #print(rotate([[2,0,0],[0,1,0],[0,0,1]], 90, 'y'))
+    #print(calc_rot_array_from_hkl(19,-24,28))
     modelfile = sys.argv[1]
     m = Model(modelfile)
+    rot_arr = calc_rot_array_from_hkl(41,60,-6)
+    rot(m,rot_arr)
+    m.write_real_xyz('temp.real.xyz')
+    return
 
     # Below is a (the?) rotation matrix of Pei's t1 that gives some planes. Oriented for a specific plane ~.
     #rot_arr = [ -0.977103, -0.123352, -0.173361, -0.130450, 0.990997, 0.030118, 0.168085, 0.052043, -0.984398 ]
