@@ -8,6 +8,7 @@ import sys
 import vor
 from model import Model
 from voronoi_3d import voronoi_3d
+from vor import Vor
 
 def load_index_file(indexfile):
     # Open _index.out file.
@@ -172,13 +173,20 @@ def print_all(m):
     for atom in m.atoms:
         print("{0} {1} {2}".format(atom,atom.vp.index,atom.vp.type))
 
+def save_vp_cluster_with_index(m,index):
+    # Index should be a list, e.g. [0,0,12,0]
+    index = 0
+    for atom in m.atoms:
+        if(atom.vp.index[0:4] == index):
+            temp_model = Model("comment", m.lx, m.ly, m.lz, atom.neighs+[atom])
+            temp_model.write_cif("temp{0}.cif".format(index))
+            index += 1
+            print("Saved VP cluster to modelfile temp{0}.cif".format(index))
         
 
 
 def main():
-    ##### sys.argv == [categorize_parameters.txt, *_index.out]
     # sys.argv == [categorize_parameters.txt, modelfile]
-    #if(len(sys.argv) <= 2): sys.exit("\nERROR! Fix your inputs!\n\nArg 1:  input param file detailing each voronoi 'structure'.\nShould be of the form:\nCrystal:\n    0,2,8,*\n\nArg2: an _index.out file.\n\nOutput is printed to screen.")
     if(len(sys.argv) <= 2): sys.exit("\nERROR! Fix your inputs!\n\nArg 1:  input param file detailing each voronoi 'structure'.\nShould be of the form:\nCrystal:\n    0,2,8,*\n\nArg2: a model file.\n\nOutput is printed to screen.")
 
     paramfile = sys.argv[1]
@@ -196,22 +204,34 @@ def main():
     #atom_dict = generate_atom_dict(vorrun.index,vp_dict)
     #vor_cats.load_index_file(sys.argv[2])
     #printVorCats(atom_dict,vp_dict)
-
     set_atom_vp_types(m,vp_dict)
 
-    index = 0
-    m.generate_neighbors(3.5)
-    for atom in m.atoms:
-        if(atom.vp.index[0:4] == [0, 0, 12, 0]):
-            temp_model = Model("comment", m.lx, m.ly, m.lz, atom.neighs+[atom])
-            temp_model.write_cif("temp{0}.cif".format(index))
-            index += 1
-            print("temp{0}.cif".format(index))
+    #m.generate_neighbors(3.5)
+    #save_vp_cluster_with_index(m,[0,0,12,0])
 
-    #print("Undefined indexes:")
-    #for atom in m.atoms:
-    #    if atom.vp.type == "Undef":
-    #        print("{0} {1} {2}".format(atom.id,atom.z,atom.vp.index))
+    #cutoff = 3.5
+    m2 = Model(sys.argv[3])
+    #vor_instance = Vor()
+    #vor_instance.runall(modelfile,cutoff)
+    #vor_instance.set_atom_vp_indexes(m)
+    #nbins = 6
+    #del_bin = 100.0/nbins
+    #fracs = []
+    #for atom in m2.atoms:
+    #    fracs.append((float(m.atoms[m.atoms.index(atom)].vp.index[2])/float(sum(m.atoms[m.atoms.index(atom)].vp.index))*100.0))
+    #    bin =    int((float(m.atoms[m.atoms.index(atom)].vp.index[2])/float(sum(m.atoms[m.atoms.index(atom)].vp.index))*100.0) /(100.0/(nbins-1)))
+    #    atom.z = bin+1
+    #fracs.sort()
+    #print('Min %: {0}. Max %: {1}'.format(min(fracs),max(fracs)))
+    for atom in m2.atoms:
+        atom.vp.type = m.atoms[m.atoms.index(atom)].vp.type
+    atoms = []
+    for atom in m2.atoms:
+        if(atom.vp.type == "Icosahedra-like"):
+            atoms.append(atom)
+    m3 = Model(str(len(atoms)),m.lx,m.ly,m.lz,atoms)
+    m3.write_real_xyz()
+
 
     #print_all(m)
     #vor_stats(m) # Prints what you probably want

@@ -53,8 +53,8 @@ class Atom(object):
         return not self == item
 
     def __repr__(self):
-        return str(self.id)
-        #return str(self.id)+'\t'+str(self.z)+'\t('+str(round(self.coord[0],3))+','+str(round(self.coord[1],3))+','+str(round(self.coord[2],3))+')'
+        #return str(self.id)
+        return str(self.id)+'\t'+str(self.z)+'\t('+str(round(self.coord[0],3))+','+str(round(self.coord[1],3))+','+str(round(self.coord[2],3))+')'
         #return str(self.id)
         #if(type(self.z) != type('hi')):
         #    return str(self.id) + '\t' + str(self.z) + '\t' + str(self.coord[0]) + '\t' + str(self.coord[1]) + '\t' + str(self.coord[2])

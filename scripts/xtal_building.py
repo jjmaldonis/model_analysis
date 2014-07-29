@@ -25,13 +25,13 @@ def simple_cubic():
     f.close()
 
 def fcc():
-    world_min = -10
-    world_max = 10
     a = 2.5 # Lattice parameter in A
+    world_min = -2*a
+    world_max = 2*a
     points = []
-    for x in range(world_min/a,world_max/a):
-        for y in range(world_min/a,world_max/a):
-            for z in range(world_min/a,world_max/a):
+    for x in range(int(round(world_min/a)),int(round(world_max/a))):
+        for y in range(int(round(world_min/a)),int(round(world_max/a))):
+            for z in range(int(round(world_min/a)),int(round(world_max/a))):
                 points.append( (x*a, y*a, z*a) )
                 points.append( ((0.5+x)*a, (0.5+y)*a, z*a) )
                 points.append( ((0.5+x)*a, y*a, (0.5+z)*a) )
@@ -42,7 +42,7 @@ def fcc():
 
     f = open('fcc.xyz', 'w')
     f.write('Comment: FCC Lattice\n')
-    f.write(str(world_max*2) + '\t' + str(world_max*2) + '\t' + str(world_max*2) + '\n')
+    f.write(str(world_max) + '\t' + str(world_max) + '\t' + str(world_max) + '\n')
     for i in range(0,len(points)):
         line = ""
         for item in points[i]:
@@ -54,7 +54,8 @@ def fcc():
 
 
 def main():
-    simple_cubic()
+    #simple_cubic()
+    fcc()
 
 if __name__ == '__main__':
     main()

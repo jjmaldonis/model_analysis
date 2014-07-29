@@ -30,14 +30,12 @@ def main():
         #if(i%100 == 0):
         shutil.copyfile(model,'/home/jjmaldonis/model.xyz')
         model = model[model.rfind('/')+1:]
-        model = '"' + model + '"'
-        print(' ')
         print(model)
-        try:
-            subprocess.call(['femsim', '/home/jjmaldonis/model.xyz'])
-            os.rename('vk.txt','vk_{0}txt'.format(model.strip().split()[-1][:-4]))
-        except:
-            pass
+        #try:
+        #    subprocess.call(['femsim', '/home/jjmaldonis/model.xyz'])
+        #    os.rename('vk.txt','vk_{0}txt'.format(model.strip().split()[-1][:-4]))
+        #except:
+        #    pass
         i += 1
     os.remove('/home/jjmaldonis/model.xyz')
 

@@ -70,7 +70,7 @@ class Model(object):
         if('' == content[-1].strip()): content.pop(-1)
         if('-1' in content[-1] and '.' not in content[-1]): # '-1' line
             content.pop(-1)
-        self.lx,self.ly,self.lz = tuple([float(x) for x in content.pop(0).strip().split()])
+        self.lx,self.ly,self.lz = tuple([float(x) for x in content.pop(0).strip().split()[0:3]])
 
         self.natoms = len(content)
         content = [x.strip().split() for x in content]

@@ -8,6 +8,9 @@ def main():
     m1 = Model(mf1)
     m2 = Model(mf2)
 
+    print(m1.natoms)
+    print(m2.natoms)
+
     for atom1 in m1.atoms:
         found = False
         for atom2 in m2.atoms:
