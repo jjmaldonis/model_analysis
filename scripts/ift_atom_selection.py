@@ -3,8 +3,8 @@ import sys
 from basic_model import Model
 import math
 
-def atom_selection(modelfile, intensityfile, outbase=None):
-    npix = 256
+def atom_selection(modelfile, intensityfile, npix, outbase=None):
+    #npix = 256
     #intensities = np.zeros((npix,npix,npix),dtype=float)
     intensities = [[[0.0 for i in range(npix)] for i in range(npix)] for i in range(npix)]
     m = Model(modelfile)
@@ -46,6 +46,7 @@ def atom_selection(modelfile, intensityfile, outbase=None):
         outbase = 'temp'
     Model(m.comment,m.lx,m.ly,m.lz,atoms).write_cif(outbase+'.cif')
     Model(m.comment,m.lx,m.ly,m.lz,atoms).write_our_xyz(outbase+'.xyz')
+    Model(m.comment,m.lx,m.ly,m.lz,atoms).write_real_xyz(outbase+'.real.xyz')
 
 def main():
     modelfile = sys.argv[1]
