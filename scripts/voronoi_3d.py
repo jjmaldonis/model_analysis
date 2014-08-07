@@ -22,8 +22,8 @@ def voronoi_3d(model,cutoff):
     maxcan = 75
     maxver = 100
     maxepf = 20
-    atol = 0.01
-    tol = 0.01
+    atol = 0.05
+    tol = 0.05
 
     nnab = []
     vvol = np.zeros(model.natoms)
@@ -44,10 +44,14 @@ def vp_analysis(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol):
     weight_sp = model.atomtypes.copy()
     for key in weight_sp:
         weight_sp[key] = 1.0
+    print_percent = 0.0
     for i,atomi in enumerate(model.atoms):
         p = []
         mtag = []
-        print("Calculating VP for atom {0}".format(i))
+        #print("Calculating VP for atom {0}".format(i))
+        if(100.0*i/model.natoms > print_percent):
+            print("{0}% done...".format(print_percent))
+            print_percent += 5.0
         noi = i # Number of i, just make a copy of it
         #print("  Selecting candidates")
         for j,atomj in enumerate(model.atoms):

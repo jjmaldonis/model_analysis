@@ -17,8 +17,10 @@ def check_dists(model):
         #if(i%model.natoms == 0): sys.stdout.write("{0}%..".format(i/model.natoms))
         for atomj in model.atoms[model.atoms.index(atomi)+1:]:
             d = model.dist(atomi,atomj)
-            if(d < m): m = d
-    print("\nMinimimum atomic spacing: {0}\n".format(m))
+            if(d < m):
+                m = d
+                t = (atomi,atomj)
+    print("\nMinimimum atomic spacing: {0} from atoms {1}\n".format(m,t))
 
 def atoms_in_box(model):
     for atom in model.atoms:
@@ -66,7 +68,6 @@ def number_of_atoms(model):
 
 def main():
     modelfile = sys.argv[1]
-    cutoff = float(sys.argv[2])
     m = Model(modelfile)
     number_of_atoms(m)
     composition(m)
@@ -74,6 +75,7 @@ def main():
     atoms_in_box(m)
     positions(m)
     check_dists(m)
+    cutoff = float(sys.argv[2])
     m.generate_neighbors(cutoff)
     cn = 0.0
     for atom in m.atoms:

@@ -8,8 +8,8 @@ module shared_data
     real, parameter :: maxcan = 75 !75
     real, parameter :: maxver = 100 !100
     real, parameter :: maxepf = 20  !20
-    real, parameter :: atol = 0.01
-    real, parameter :: tol = 0.01
+    real, parameter :: atol = 0.35
+    real, parameter :: tol = 0.35
     integer, save :: nsp, atomtype_num
     integer, save :: ndata, natoms !nsp1, nsp2, nsp3
     integer, save, dimension(:), allocatable :: sp_natoms

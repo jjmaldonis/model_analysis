@@ -3,6 +3,14 @@ import os
 import random
 import string
 import subprocess
+from model import Model
+
+def fortran_voronoi_3d(modelfile,cutoff):
+        vorrun = Vor()
+        vorrun.runall(modelfile,cutoff)
+        model = Model(modelfile)
+        vorrun.set_atom_vp_indexes(model)
+        return model
 
 class Vor(object):
     """ This class runs the fortran voronoi code, which you should compile and link into your bin.
@@ -76,6 +84,7 @@ class Vor(object):
         if(self.preturncode != 0):
             self.del_files(self.randstr)
             raise Exception("Voronoi.f90 failed! "+self.perr)
+        print("Voronoi.f90 output: "+str(self.poutput))
         print("Voronoi.f90 exit status: "+str(self.preturncode))
 
     def save_files(self,outbase):

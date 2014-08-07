@@ -8,7 +8,7 @@ import sys
 import vor
 from model import Model
 from voronoi_3d import voronoi_3d
-from vor import Vor
+from vor import Vor, fortran_voronoi_3d
 
 def load_index_file(indexfile):
     # Open _index.out file.
@@ -86,6 +86,13 @@ def generate_atom_dict(indexes,vp_dict):
                 atom_dict["Undef:"].append(line)
     return atom_dict
 
+
+def categorize_atoms(m,paramfile):
+    vp_dict = load_param_file(paramfile)
+    set_atom_vp_types(m,vp_dict)
+    for key in vp_dict.keys():
+        vp_dict[key[:key.index(':')]] = vp_dict.pop(key)
+    m.vp_dict = vp_dict
 
 def set_atom_vp_types(model,vp_dict):
     """ saves the voronoi polyhedra type for each atom to the atom in the model """
@@ -168,6 +175,7 @@ def vor_stats(m):
         print("{0}: {1}".format(key,cats[key]["Total"]))
         for elem in cats[key]:
             if(elem != "Total"): print("   {0}: {1}".format(elem,cats[key][elem]))
+    return cats
 
 def print_all(m):
     for atom in m.atoms:
@@ -194,23 +202,36 @@ def main():
 
     m = Model(modelfile)
 
-    #voronoi_3d(m,3.5)
+    cutoff = {}
+    cutoff[(40,40)] = 3.5
+    cutoff[(13,29)] = 3.5
+    cutoff[(29,13)] = 3.5
+    cutoff[(40,13)] = 3.5
+    cutoff[(13,40)] = 3.5
+    cutoff[(29,40)] = 3.5
+    cutoff[(40,29)] = 3.5
+    cutoff[(13,13)] = 3.5
+    cutoff[(29,29)] = 3.5
 
-    vorrun = vor.Vor()
-    vorrun.runall(modelfile,3.5)
-    vorrun.set_atom_vp_indexes(m)
+    voronoi_3d(m,cutoff)
+    #m = fortran_voronoi_3d(modelfile,3.5)
+
+    #vorrun = vor.Vor()
+    #m = vorrun.runall(modelfile,3.5)
+    #vorrun.set_atom_vp_indexes(m)
 
     vp_dict = load_param_file(paramfile)
+    set_atom_vp_types(m,vp_dict)
+
     #atom_dict = generate_atom_dict(vorrun.index,vp_dict)
     #vor_cats.load_index_file(sys.argv[2])
     #printVorCats(atom_dict,vp_dict)
-    set_atom_vp_types(m,vp_dict)
 
     #m.generate_neighbors(3.5)
     #save_vp_cluster_with_index(m,[0,0,12,0])
 
     #cutoff = 3.5
-    m2 = Model(sys.argv[3])
+    #m2 = Model(sys.argv[3])
     #vor_instance = Vor()
     #vor_instance.runall(modelfile,cutoff)
     #vor_instance.set_atom_vp_indexes(m)
@@ -223,18 +244,18 @@ def main():
     #    atom.z = bin+1
     #fracs.sort()
     #print('Min %: {0}. Max %: {1}'.format(min(fracs),max(fracs)))
-    for atom in m2.atoms:
-        atom.vp.type = m.atoms[m.atoms.index(atom)].vp.type
-    atoms = []
-    for atom in m2.atoms:
-        if(atom.vp.type == "Icosahedra-like"):
-            atoms.append(atom)
-    m3 = Model(str(len(atoms)),m.lx,m.ly,m.lz,atoms)
-    m3.write_real_xyz()
+    #for atom in m2.atoms:
+    #    atom.vp.type = m.atoms[m.atoms.index(atom)].vp.type
+    #atoms = []
+    #for atom in m2.atoms:
+    #    if(atom.vp.type == "Icosahedra-like"):
+    #        atoms.append(atom)
+    #m3 = Model(str(len(atoms)),m.lx,m.ly,m.lz,atoms)
+    #m3.write_real_xyz()
 
 
     #print_all(m)
-    #vor_stats(m) # Prints what you probably want
+    vor_stats(m) # Prints what you probably want
 
 
 if __name__ == "__main__":
