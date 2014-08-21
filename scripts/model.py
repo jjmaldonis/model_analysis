@@ -61,6 +61,9 @@ class Model(object):
 
         self.generate_position_arrays()
 
+    def __contains__(self,key):
+        return key in self.atoms
+
 
     def read_xyz(self,modelfile):
         with open(modelfile) as f:

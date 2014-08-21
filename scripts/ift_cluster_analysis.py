@@ -1,11 +1,10 @@
-import sys
+import sys, os
 from basic_model import Model
 from hutch import Hutch
 from atom import Atom
 from atom_graph import AtomGraph
-from vor import Vor
-import categorize_vor
-
+from voronoi_3d import voronoi_3d
+from categorize_vor import load_param_file, set_atom_vp_types, vor_stats
 
 def nnnic(atom,model,cluster):
     """ number of nearest neighbors in cluster 
@@ -19,7 +18,113 @@ def nnnic(atom,model,cluster):
     return n
     
 
+def read_intensity_file(intensityfile):
+    #maxx = 0.0
+    print("Reading intensity file {0}".format(intensityfile))
+    with open(intensityfile) as f:
+        for l,line in enumerate(f):
+            line = line.strip().split()
+            if(l == 0):
+                npixx, npixy, npixz = tuple([int(x) for x in line])
+                if(npixx == npixy == npixz):
+                    npix = npixx
+                else:
+                    pass
+                intensities = [[[0.0 for i in range(npix)] for i in range(npix)] for i in range(npix)]
+            else:
+                for i,x in enumerate(line):
+                    x = float(x)
+                    #if(x > maxx): maxx = x
+                    #intensities[i%npix][int(i/npix)][l-1] = x
+                    intensities[int(i/npix)][i%npix][l-1] = x  # Correct
+                print("Read in line {0} of file {1} in python.".format(l-1,intensityfile))
+    #print("Max intensity = {0}".format(maxx))
+    return intensities
+
 def main():
+    """ Columns that I should have:
+        % atoms that are xtal-like (i.e. what % of all the xtal-like atoms are in this sub-model?)
+        % atoms that are ico-like
+        % atoms that are mixed
+        % atoms that are undefined
+        Can you see planes?
+        Is the spot visible in the sub-model's FT?
+        What is the ratio of the max intensity of the spot in the original FT / that in the sub-model's FT? (Do this on a per-atom basis to account for the different number of atoms.)"""
+
+    # paramfile, jobid, original ft, main ft direc, VP categories paramfile
+    paramfile = sys.argv[1] # Paramfile
+    with open(paramfile) as f:
+        params = f.readlines()
+    params = [line.strip() for line in params]
+    modelfile = params[0]
+    num_spots = int(params[1])
+    jobid = sys.argv[2] # jobid
+    orig_ft = sys.argv[3] # original ft
+    main_direc = sys.argv[4] # spot ft direc
+    spot_ft_direc = main_direc+'/spot_fts/'
+    spot_fts = sorted(os.listdir(spot_ft_direc))
+    spot_fts = [spot_ft_direc+line for line in spot_fts]
+    vp_paramfile = sys.argv[5] # VP paramfile for categorizing
+
+    spot_ints = []
+    orig_intensities = read_intensity_file(orig_ft)
+    for intensityfile in spot_fts:
+        try:
+            i = int(intensityfile[intensityfile.index('_spot')+5:intensityfile.index('_spot')+6])
+        except:
+            i = int(intensityfile[intensityfile.index('_spot')+5])
+        print("Intensity file: {0} => i={1}".format(intensityfile,i))
+        j = i*7 +2
+        x0,y0,z0    = tuple([float(x) for x in params[j+1].split()])
+        sx,sy,sz    = tuple([float(x) for x in params[j+2].split()])
+        cxy,cxz,cyz = tuple([float(x) for x in params[j+3].split()])
+        xi,xf,xc    = tuple([float(x)*2 for x in params[j+4].split()][:3])
+        yi,yf,yc    = tuple([float(x)*2 for x in params[j+5].split()][:3])
+        zi,zf,zc    = tuple([float(x)*2 for x in params[j+6].split()][:3])
+        ft_intensities = read_intensity_file(intensityfile)
+        maxoi = 0.0
+        maxi = 0.0
+        for x in range(xi-1,xf):
+            for y in range(yi-1,yf):
+                for z in range(zi-1,zf):
+                    #print(x,y,z,orig_intensities[x][y][z])
+                    if( ft_intensities[x][y][z] > maxi ):
+                        maxi = ft_intensities[x][y][z]
+                    if( orig_intensities[x][y][z] > maxoi ):
+                        maxoi = orig_intensities[x][y][z]
+        print("{0}/{1}={2} I still need to rescale by number of atoms".format(maxi,maxoi,maxi/maxoi))
+        spot_ints.append((i,maxi,maxoi,maxi/maxoi))
+        print(spot_ints)
+
+    mm = Model(modelfile)
+    voronoi_3d(mm,3.5)
+    vp_dict = load_param_file(vp_paramfile)
+    set_atom_vp_types(mm,vp_dict)
+    vor_stats(mm)
+    mtype_dict = {}
+    for atom in mm.atoms:
+        mtype_dict[atom.vp.type] = mtype_dict.get(atom.vp.type,0) + 1
+    for i in range(0,num_spots):
+        j = i*7 +2
+        submodelfile = params[j] + jobid + '.xyz'
+        try:
+            sm = Model(submodelfile)
+            # Assign each atom its correct type
+            smtype_dict = {}
+            for atom in sm.atoms:
+                #print(mm.atoms[mm.atoms.index(atom)])
+                atom.vp.type = mm.atoms[mm.atoms.index(atom)].vp.type
+                smtype_dict[atom.vp.type] = smtype_dict.get(atom.vp.type,0) + 1
+            print(submodelfile)
+            #vor_stats(sm)
+            for key in smtype_dict:
+                print("  Percent of {0} atoms: {1}/{2}= {3}".format(key,smtype_dict[key],mtype_dict[key],round(100.0*smtype_dict[key]/mtype_dict[key])))
+                print("  Ratio of xtal-like to ico-like: {0}".format( (100.0*smtype_dict['Crystal-like']/mtype_dict['Crystal-like']) / (100.0*smtype_dict['Icosahedra-like']/mtype_dict['Icosahedra-like'])))
+        except:
+            pass
+    print(spot_ints)
+
+    return
     # sys.argv[1] should be the modelfile in the xyz format
     # sys.argv[2] should be the cutoff desired
     modelfile = sys.argv[1]

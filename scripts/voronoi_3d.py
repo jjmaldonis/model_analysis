@@ -22,8 +22,9 @@ def voronoi_3d(model,cutoff):
     maxcan = 75
     maxver = 100
     maxepf = 20
-    atol = 0.05
-    tol = 0.05
+    atol = 0.03
+    tol = 0.03
+    tltol = 0.03
 
     nnab = []
     vvol = np.zeros(model.natoms)
@@ -32,11 +33,11 @@ def voronoi_3d(model,cutoff):
     nablst = []
     nedges = []
 
-    nedges,nnab,nablst,vvol = vp_analysis(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol)
+    nedges,nnab,nablst,vvol = vp_analysis(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol,tltol)
     save_vp_atom_data(model,nedges,nnab,nablst,vvol)
 
 
-def vp_analysis(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol):
+def vp_analysis(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol,tltol):
     sumvol = 0.0
     volratio = 0.0
     vol = model.lx*model.ly*model.lz
@@ -212,8 +213,22 @@ def vp_analysis(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol):
             for ic in range(0,nc):
                 if(nepf[ic] != 0):
                     if( (area[ic] != 0) and (area[ic] < atol*tarea) ):
+                    #    for j in range(0,len(sleng)):
+                    #        try:
+                    #            sleng[j][ic] = 0
+                    #        except:
+                    #            pass
+                    #    print("Dropped a face!")
                         break
                     avglen = tleng[ic] / float(nepf[ic])
+                    #print(nepf[ic], sleng[j])
+                    #for j in range(0,nepf[ic]):
+                    #    try:
+                    #        if((sleng[j][ic] != 0.0) and (sleng[j][ic] < tltol*avglen)):
+                    #            sleng[j][ic] = 0
+                    #            print("Dropped an edge!")
+                    #    except:
+                    #        pass
             
         #print("  Generating nablst")
         # nedges will create the vp indexes
