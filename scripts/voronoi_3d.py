@@ -37,7 +37,11 @@ def voronoi_3d(model,cutoff):
     save_vp_atom_data(model,nedges,nnab,nablst,vvol)
 
 
+###@profile
 def vp_analysis(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol,tltol):
+    ilx = 1.0/model.lx
+    ily = 1.0/model.ly
+    ilz = 1.0/model.lz
     sumvol = 0.0
     volratio = 0.0
     vol = model.lx*model.ly*model.lz
@@ -46,7 +50,7 @@ def vp_analysis(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol,tltol):
     for key in weight_sp:
         weight_sp[key] = 1.0
     print_percent = 0.0
-    for i,atomi in enumerate(model.atoms):
+    for i,atomi in enumerate(iter(model.atoms)):
         p = []
         mtag = []
         #print("Calculating VP for atom {0}".format(i))
@@ -55,11 +59,14 @@ def vp_analysis(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol,tltol):
             print_percent += 5.0
         noi = i # Number of i, just make a copy of it
         #print("  Selecting candidates")
-        for j,atomj in enumerate(model.atoms):
+        for j,atomj in enumerate(iter(model.atoms)):
             if(i != j):
-                rxij = atomj.coord[0]/model.lx - atomi.coord[0]/model.lx
-                ryij = atomj.coord[1]/model.ly - atomi.coord[1]/model.ly
-                rzij = atomj.coord[2]/model.lz - atomi.coord[2]/model.lz
+                #rxij = atomj.coord[0]/model.lx - atomi.coord[0]/model.lx
+                #ryij = atomj.coord[1]/model.ly - atomi.coord[1]/model.ly
+                #rzij = atomj.coord[2]/model.lz - atomi.coord[2]/model.lz
+                rxij = atomj.coord[0]*ilx - atomi.coord[0]*ilx
+                ryij = atomj.coord[1]*ily - atomi.coord[1]*ily
+                rzij = atomj.coord[2]*ilz - atomi.coord[2]*ilz
                 rxij = rxij - round(rxij) #PBCs
                 ryij = ryij - round(ryij)
                 rzij = rzij - round(rzij)
