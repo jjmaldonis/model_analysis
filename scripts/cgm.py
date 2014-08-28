@@ -24,7 +24,7 @@ atom_style	atomic
 read_data temp.dat
 
 pair_style	eam/alloy
-pair_coeff	* * /home/jjmaldonis/bin/ZrCuAl2011.eam.alloy Zr Cu Al
+pair_coeff	* * /home/maldonis/bin/ZrCuAl2011.eam.alloy Zr Cu Al
 
 thermo_style	custom step etotal fmax fnorm
 thermo		1
@@ -32,7 +32,6 @@ thermo		1
 minimize	1.0e-6 0 1000 10000
 write_restart	lmp_emin_exp.restart """)
     of.close()
-
 
 if __name__== '__main__':
     main()

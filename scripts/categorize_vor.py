@@ -30,9 +30,9 @@ def load_index_file(indexfile):
 
 def load_param_file(paramfile):
     """ Returns a dictionary in the form:
-        {'Crystal-like:': [[0, 4, 4, '*'], [0, 5, 2, '*']], 
-        'Icosahedra-like:': [[0, 2, 8, '*'], [0, 1, 10, '*'], [0, 0, 12, 0], [0, 0, 12, 2]],
-        'Mixed:': [[0, 3, 6, '*'], [0, 3, 7, 2], [1, 2, 5, 4]]} """
+        {'Crystal-like': [[0, 4, 4, '*'], [0, 5, 2, '*']], 
+        'Icosahedra-like': [[0, 2, 8, '*'], [0, 1, 10, '*'], [0, 0, 12, 0], [0, 0, 12, 2]],
+        'Mixed': [[0, 3, 6, '*'], [0, 3, 7, 2], [1, 2, 5, 4]]} """
     # Open the input parameter file. Should be of the form:
     # Crystal:
     #     0,2,8,*
@@ -44,7 +44,11 @@ def load_param_file(paramfile):
         for i in range(0,len(vps)):
             vps[i] = vps[i].strip()
         if(len(vps) == 1):
-            current_entry = vps[0]
+            # If there is a : at the end of the vps, get rid of it
+            if(':' == vps[0][-1]):
+                current_entry = vps[0][:-1]
+            else:
+                current_entry = vps[0]
             vp_dict[current_entry] = []
         elif(len(vps) == 4):
             for i in range(0,4):
@@ -60,6 +64,7 @@ def generate_atom_dict(model):
     Returns a dictionary in the form:
     { 'Mixed:': [list of mixed atoms], 'Crystal-like:', [list of crystal-like atoms], etc}.
     All atoms must be assigned a VP type prior to this function. """
+    atom_dict = {}
     for atom in model.atoms:
         atom_dict[atom.vp.type] = atom_dict.get(atom.vp.type,[]) + [atom]
     return atom_dict
@@ -87,7 +92,7 @@ def categorize_index(ind, vp_dict):
                 if(vps[i] != '*' and vps[i] != ind[i]):
                     found = False
             if(found):
-                return key[:-1]
+                return key
     return 'Undef'
 
 def set_atom_vp_types(model,vp_dict):
