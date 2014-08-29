@@ -265,12 +265,20 @@ class Model(object):
         return (self.lx,self.ly,self.lz)
 
     def get_atoms_in_cutoff(self,atom,cutoff):
-        x_start = atom.coord[0] - cutoff
-        y_start = atom.coord[1] - cutoff
-        z_start = atom.coord[2] - cutoff
-        x_end   = atom.coord[0] + cutoff
-        y_end   = atom.coord[1] + cutoff
-        z_end   = atom.coord[2] + cutoff
+        if(type(atom) == Atom):
+            x_start = atom.coord[0] - cutoff
+            y_start = atom.coord[1] - cutoff
+            z_start = atom.coord[2] - cutoff
+            x_end   = atom.coord[0] + cutoff
+            y_end   = atom.coord[1] + cutoff
+            z_end   = atom.coord[2] + cutoff
+        else: # Assume we got a coordinate tuple instead
+            x_start = atom[0] - cutoff
+            y_start = atom[1] - cutoff
+            z_start = atom[2] - cutoff
+            x_end   = atom[0] + cutoff
+            y_end   = atom[1] + cutoff
+            z_end   = atom[2] + cutoff
         if(x_start < -self.lx/2.0): x_start = x_start + self.lx #PBC
         if(y_start < -self.ly/2.0): y_start = y_start + self.ly #PBC
         if(z_start < -self.lz/2.0): z_start = z_start + self.lz #PBC
@@ -310,9 +318,14 @@ class Model(object):
         return list
 
     def dist(self,atom1,atom2):
-        x = (atom1.coord[0] - atom2.coord[0])
-        y = (atom1.coord[1] - atom2.coord[1])
-        z = (atom1.coord[2] - atom2.coord[2])
+        try:
+            x = (atom1.coord[0] - atom2.coord[0])
+            y = (atom1.coord[1] - atom2.coord[1])
+            z = (atom1.coord[2] - atom2.coord[2])
+        except AttributeError:
+            x = (atom1[0] - atom2.coord[0])
+            y = (atom1[1] - atom2.coord[1])
+            z = (atom1[2] - atom2.coord[2])
         x = x - self.lx*round(x/self.lx)
         y = y - self.ly*round(y/self.ly)
         z = z - self.lz*round(z/self.lz)
@@ -431,6 +444,107 @@ class Model(object):
         self.zz = np.array(self.zz)
 
 
+    def radial_composition(self, outfile):
+        """ Creates 1D waves stored in outfile
+        for each element in the model. Each 
+        wave is a histogram of the number of
+        atoms between two radial positions
+        starting at the center of model and
+        radiating outward. """
+        npix = 16
+        keys = self.atomtypes.keys()
+        #histo = [[0.0 for x in range(npix)] for key in keys]
+        histo = [{} for x in range(npix)]
+        dx = (self.lx/2.0)/npix # Cube assumed
+        for i,r in enumerate(drange(dx, npix*dx-dx, dx)):
+            atoms = self.get_atoms_in_cutoff( (0.0,0.0,0.0), r)
+            print(r, len(atoms))
+            comp = {}
+            for atom in atoms:
+                comp[str(atom.z)] = comp.get(str(atom.z),0) + 1.0
+            for type in self.atomtypes:
+                if( str(type) not in comp.keys()):
+                    comp[str(type)] = 0.0
+            comp['Total'] = len(atoms)
+            histo[i] = comp
+        of = open(outfile,'w')
+        of.write('IGOR\n')
+        for atomtype in keys:
+            of.write('\nWAVES/N=({0})\t {1}\nBEGIN\n'.format(npix,'partial_radial_comp_'+znum2sym.z2sym(atomtype)))
+            for i in range(npix-2):
+                if(i != 0):
+                    of.write("{0} ".format((histo[i][str(atomtype)] - histo[i-1][str(atomtype)])/( 4.0/3.0*np.pi*( (i*dx)**3 - ((i-1)*dx)**3 ))))
+                    #print("{1}  {0} ".format(histo[i][str(atomtype)],i*dx))
+                    #print("  {1}  {0} ".format(histo[i][str(atomtype)] - histo[i-1][str(atomtype)],i*dx))
+                else:
+                    of.write("{0} ".format(histo[i][str(atomtype)]))
+                    #print("{1}  {0} ".format(histo[i][str(atomtype)],i*dx))
+            of.write("\n")
+            of.write('END\n')
+            of.write('X SetScale x 0,{1}, {0};\n'.format('partial_comp_'+znum2sym.z2sym(atomtype),npix*dx-dx))
+        of.close()
+
+            
+    def local_composition(self, outfile):
+        """ variable radius sliding average
+        Goes pixel by pixel  calculates the
+        composition around that pixel (within
+        some radius) and assigns the center
+        pixel that composition. 
+        Use a 256 x 256 x 256 matrix. """
+        radius = 3.6 * 2
+        npix = 64
+        #mat = np.zeros((npix,npix,npix),dtype=np.float)
+        #mat = np.zeros((npix,npix,npix),dtype={'names':['col1', 'col2', 'col3'], 'formats':['f4','f4','f4']})
+        #mat = np.zeros((npix,npix,npix),dtype={'names':['40', '13', '29'], 'formats':['f4','f4','f4']})
+        #mat = np.zeros((npix,npix,npix),dtype={'names':['id','data'], 'formats':['f4','f4']})
+        #names = ['id','data']
+        #formats = ['i4',('f4','f4','f4')]
+        #mat = np.zeros((npix,npix,npix),dtype=dict(names = names, formats=formats))
+        #mat = np.zeros((npix,npix,npix),dtype={'40':('i4',0), '29':('f4',0), '13':('f4',0)})
+        print("Creating matrix...")
+        mat = [[[{} for i in range(npix)] for j in range(npix)] for k in range(npix)]
+        print("Finished creating matrix.")
+        #print(repr(mat))
+        dx = self.lx/npix
+        dy = self.ly/npix
+        dz = self.lz/npix
+        for ii,i in enumerate(drange(-npix/2*dx,npix/2*dx-dx,dx)):
+            print("On ii = {0}".format(ii))
+            for jj,j in enumerate(drange(-npix/2*dy,npix/2*dy-dy,dy)):
+                for kk,k in enumerate(drange(-npix/2*dz,npix/2*dz-dz,dz)):
+                    atoms = self.get_atoms_in_cutoff( (i,j,k), radius )
+                    comp = {}
+                    for atom in atoms:
+                        comp[str(atom.z)] = comp.get(str(atom.z),0) + 1.0
+                    for key in comp:
+                        comp[key] /= len(atoms)
+                    #print(comp)
+                    #mat[ii][jj][kk] = copy.copy(comp)
+                    mat[ii][jj][kk] = comp
+        of = open(outfile,'w')
+        of.write('IGOR\n')
+        for atomtype in self.atomtypes:
+            of.write('\nWAVES/N=({0},{1},{2})\t {3}\nBEGIN\n'.format(npix,npix,npix,'partial_comp_'+znum2sym.z2sym(atomtype)))
+            for layer in mat:
+                for column in layer:
+                    for value in column:
+                        try:
+                            of.write("{0} ".format(value[str(atomtype)]))
+                        except KeyError:
+                            of.write("{0} ".format(0.0))
+                of.write("\n")
+            of.write('END\n')
+            of.write('X SetScale/P x 0,1,"", {0}; SetScale/P y 0,1,"", {0}; SetScale/P z 0,1,"", {0}; SetScale d 0,0,"", {0}\n'.format('partial_comp_'+znum2sym.z2sym(atomtype)))
+        of.close()
+        return mat
+
+def drange(start, stop, step):
+    r = start
+    while r < stop:
+        yield r
+        r += step
+
 
 
 
@@ -450,6 +564,9 @@ def main():
             m.write_our_xyz()
         elif(outtype == 'realxyz' or outtype == '.realxyz'):
             m.write_real_xyz()
+    else:
+        m.local_composition('temp2.txt')
+        #m.radial_composition('temp.txt')
 
     ## create histogram of distances
     #dists = np.array(m.get_all_dists())
