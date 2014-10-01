@@ -6,10 +6,10 @@ import time
 import random
 import string
 from vor import Vor
+from voronoi_3d import voronoi_3d
 import categorize_vor
 from hutch import Hutch
 from model import Model
-import voronoi_3d
 import sys
 import numpy as np
 
@@ -24,7 +24,8 @@ class AtomGraph(object):
         super(AtomGraph,self).__init__()
         
         self.model = Model(modelfile)
-        self.model.generate_neighbors(cutoff)
+        #self.model.generate_neighbors(cutoff)
+
         #self.model.generate_coord_numbers()
         #print('Coordination numbers:')
         #pprint(self.model.coord_numbers)
@@ -43,15 +44,16 @@ class AtomGraph(object):
         #        if(len(key) < 4):
         #            print('  {0}: {1}'.format(key,self.model.coord_numbers[key]))
 
-        vor_instance = Vor()
-        vor_instance.runall(modelfile,cutoff)
-        index = vor_instance.get_indexes()
-        vor_instance.set_atom_vp_indexes(self.model)
+        #vor_instance = Vor()
+        #vor_instance.runall(modelfile,cutoff)
+        #index = vor_instance.get_indexes()
+        #vor_instance.set_atom_vp_indexes(self.model)
+        voronoi_3d(self.model,cutoff)
         
         #vorcats = VorCats('/home/jjmaldonis/OdieCode/vor/scripts/categorize_parameters.txt')
         #self.vp_dict = categorize_vor.load_param_file('/home/jjmaldonis/model_analysis/scripts/categorize_parameters.txt')
-        self.vp_dict = categorize_vor.load_param_file('/home/jjmaldonis/model_analysis/scripts/categorize_parameters_iso.txt')
-        self.atom_dict = categorize_vor.generate_atom_dict(index,self.vp_dict)
+        self.vp_dict = categorize_vor.load_param_file('/home/maldonis/model_analysis/scripts/categorize_parameters_iso.txt')
+        #self.atom_dict = categorize_vor.generate_atom_dict(index,self.vp_dict)
         #vorcats.save(index)
         categorize_vor.set_atom_vp_types(self.model,self.vp_dict)
 

@@ -7,6 +7,7 @@ def atom_selection(modelfile, intensityfile, npix, outbase=None):
     intensities = [[[0.0 for i in range(npix)] for i in range(npix)] for i in range(npix)]
     m = Model(modelfile)
     maxx = 0.0
+    mean = 0.0
     with open(intensityfile) as f:
         for l,line in enumerate(f):
             line = line.strip().split()
@@ -21,11 +22,30 @@ def atom_selection(modelfile, intensityfile, npix, outbase=None):
                     x = float(x)
                     if(x > maxx): maxx = x
                     intensities[i%npix][int(i/npix)][l-1] = x
+                    mean += x
                 print("Read in line {0} (python).".format(l-1))
-
     if(maxx == 0.0):
         print("Something went wrong somewhere. Check the stdev and mgrid gfx files first.")
         return 1
+    mean /= npix**3
+    mean /= maxx
+    print("Mean of entire box is {0}".format(mean))
+    stdev = 0.0
+    with open(intensityfile) as f:
+        for l,line in enumerate(f):
+            line = line.strip().split()
+            if(l == 0):
+                npixx, npixy, npixz = tuple([int(x) for x in line])
+                if(npixx == npixy == npixz):
+                    npix = npixx
+                else:
+                    pass
+            else:
+                for i,x in enumerate(line):
+                    x = float(x)
+                    stdev += (x/maxx-mean)**2
+                print("Read in line {0} again (python).".format(l-1))
+    stdev = math.sqrt(stdev/npix**3)
 
     #ints = np.zeros((m.natoms),dtype=float)
     ints = [0.0 for i in range(m.natoms)]
@@ -40,14 +60,15 @@ def atom_selection(modelfile, intensityfile, npix, outbase=None):
     #print("np.stdev: {0}".format(np.std(ints)))
     #print("Variance: {0}".format(np.var(ints)))
     #print("Median: {0}".format(np.median(ints)))
-    mean = sum(ints)/len(ints)
+    #mean = sum(ints)/len(ints)
     print("Mean: {0}".format(mean))
-    stdev = 0.0
-    for x in ints:
-        stdev += (x-mean)**2
-    stdev = math.sqrt(stdev/len(ints))
+    #stdev = 0.0
+    #for x in ints:
+    #    stdev += (x-mean)**2
+    #stdev = math.sqrt(stdev/len(ints))
     print("Stdev: {0}".format(stdev))
-    mini = mean + stdev/2.0
+    #mini = mean + stdev/2.0
+    mini = mean + stdev/1.0
     print("Accepting atoms with intensity above {0}".format(mini))
     atoms = [atom for atom in m.atoms if atom.intensity > mini]
     print("Found {0} atoms".format(len(atoms)))
@@ -61,7 +82,7 @@ def atom_selection(modelfile, intensityfile, npix, outbase=None):
 def main():
     modelfile = sys.argv[1]
     intensityfile = sys.argv[2]
-    atom_selection(modelfile, intensityfile)
+    atom_selection(modelfile, intensityfile, 256)
 
 
 if __name__ == '__main__':

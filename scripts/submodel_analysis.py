@@ -1,7 +1,7 @@
 import sys, os
 from model import Model
 from voronoi_3d import voronoi_3d,print_data
-from categorize_vor import vor_stats, categorize_atoms
+from categorize_vor import vor_stats, categorize_atoms, index_stats
 from vor import fortran_voronoi_3d
 
 def highlight(wholemodelfile,submodelfile,outfile=None):
@@ -29,20 +29,21 @@ def vp_analyze(wm,sm,vpparamfile,outfile=None):
             print("Couldn't find atom {0} in large model!".format(atom))
 
     categorize_atoms(sm,vpparamfile)
+    index_stats(sm)
     vs = vor_stats(sm) # Prints what you probably want
 
-    vp_list = list(sm.vp_dict)
-    vp_list.append("Undef")
-    for i,atom in enumerate(sm.atoms):
-        if(atom in wm.atoms):
-            #print(atom.vp.type, wm.atoms[wm.atoms.index(atom)].vp.type)
-            sm.atoms[i].z = vp_list.index(atom.vp.type) + 1
-    #print(vp_list)
-    print("Fraction of xtal/ico: {0}".format(float(vs["Crystal-like"]["Total"])/float(vs["Icosahedra-like"]["Total"] + vs["Full-icosahedra"]["Total"])))
-    if(outfile == None):
-        outfile = 'vp_colorized.real.xyz'
-    #sm.write_real_xyz(outfile)
-    #print_data(sm)
+    #vp_list = list(sm.vp_dict)
+    #vp_list.append("Undef")
+    #for i,atom in enumerate(sm.atoms):
+    #    if(atom in wm.atoms):
+    #        #print(atom.vp.type, wm.atoms[wm.atoms.index(atom)].vp.type)
+    #        sm.atoms[i].z = vp_list.index(atom.vp.type) + 1
+    ##print(vp_list)
+    #print("Fraction of xtal/ico: {0}".format(float(vs["Crystal-like"]["Total"])/float(vs["Icosahedra-like"]["Total"] + vs["Full-icosahedra"]["Total"])))
+    #if(outfile == None):
+    #    outfile = 'vp_colorized.real.xyz'
+    ##sm.write_real_xyz(outfile)
+    ##print_data(sm)
 
 
 def main():
@@ -52,16 +53,16 @@ def main():
 
     wm = Model(wholemodelfile)
     voronoi_3d(wm,3.5)
-    try:
-        sm = Model(submodelfile)
-        #highlight(wholemodelfile,submodelfile)
-        vp_analyze(wm, sm, vpparamfile)
-    except:
-        for file in sorted(os.listdir(submodelfile)):
-            print("Processing file {0}...".format(file))
-            #highlight(wholemodelfile,file)
-            sm = Model(file)
-            vp_analyze(wm, sm, vpparamfile)
+    #try:
+    sm = Model(submodelfile)
+    #highlight(wholemodelfile,submodelfile)
+    vp_analyze(wm, sm, vpparamfile)
+    #except:
+    #    for file in sorted(os.listdir(submodelfile)):
+    #        print("Processing file {0}...".format(file))
+    #        #highlight(wholemodelfile,file)
+    #        sm = Model(file)
+    #        vp_analyze(wm, sm, vpparamfile)
 
 
 

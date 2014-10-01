@@ -265,14 +265,16 @@ class Model(object):
         return (self.lx,self.ly,self.lz)
 
     def get_atoms_in_cutoff(self,atom,cutoff):
-        if(type(atom) == Atom):
+        if(cutoff > self.lx/2): # Assume the box is a cube
+            return self.atoms
+        if(type(atom) == Atom): # "atom" is an Atom
             x_start = atom.coord[0] - cutoff
             y_start = atom.coord[1] - cutoff
             z_start = atom.coord[2] - cutoff
             x_end   = atom.coord[0] + cutoff
             y_end   = atom.coord[1] + cutoff
             z_end   = atom.coord[2] + cutoff
-        else: # Assume we got a coordinate tuple instead
+        else: # Assume we got a coordinate tuple instead. A list is fine too.
             x_start = atom[0] - cutoff
             y_start = atom[1] - cutoff
             z_start = atom[2] - cutoff
@@ -297,24 +299,40 @@ class Model(object):
         k_end = hutch_e[2]
         list = []
 
-        for i in range(0,self.hutch.nhutchs):
-            if(i_start <= i_end):
-                if(i < i_start or i > i_end): continue
-            else:
-                if(i < i_start and i > i_end): continue
-            for j in range(0,self.hutch.nhutchs):
-                if(j_start <= j_end):
-                    if(j < j_start or j > j_end): continue
+        if( (i_start != i_end and j_start != j_end and k_start != k_end) or round( cutoff/self.hutch.hutchsize) < 1 ):
+            for i in range(0,self.hutch.nhutchs):
+                if(i_start <= i_end):
+                    if(i < i_start or i > i_end): continue
                 else:
-                    if(j < j_start and j > j_end): continue
-                for k in range(0,self.hutch.nhutchs):
-                    if(k_start <= k_end):
-                        if(k < k_start or k > k_end): continue
+                    if(i < i_start and i > i_end): continue
+                for j in range(0,self.hutch.nhutchs):
+                    if(j_start <= j_end):
+                        if(j < j_start or j > j_end): continue
                     else:
-                        if(k < k_start and k > k_end): continue
-                    list = list + self.hutch.get_atoms_in_hutch((i,j,k))
+                        if(j < j_start and j > j_end): continue
+                    for k in range(0,self.hutch.nhutchs):
+                        if(k_start <= k_end):
+                            if(k < k_start or k > k_end): continue
+                        else:
+                            if(k < k_start and k > k_end): continue
+                        list = list + self.hutch.get_atoms_in_hutch((i,j,k))
+            list = [atomi for atomi in list if self.dist(atom,atomi) <= cutoff]
+        else:
+            for atomi in self.atoms:
+                d = self.dist(atomi, atom)
+                if( d < cutoff):
+                    list.append(atomi)
         #if(atom in list): list.remove(atom)
-        list = [atomi for atomi in list if self.dist(atom,atomi) <= cutoff]
+        # Debugging
+        #count = 0
+        #for atomi in self.atoms:
+        #    d = self.dist(atomi, atom)
+        #    if( d < cutoff):
+        #        #if( atomi not in list):
+        #        #    print("ERRROR! Found an atom that should be in the list but isnt! {0}".format(atomi))
+        #        count += 1
+        #if(count != len(list)):
+        #    print("ERROR! The list is not of the correct size! Should be {0} but is {1}".format(count,len(list)))
         return list
 
     def dist(self,atom1,atom2):
@@ -565,8 +583,9 @@ def main():
         elif(outtype == 'realxyz' or outtype == '.realxyz'):
             m.write_real_xyz()
     else:
-        m.local_composition('temp2.txt')
+        #m.local_composition('temp2.txt')
         #m.radial_composition('temp.txt')
+        print m.composition()
 
     ## create histogram of distances
     #dists = np.array(m.get_all_dists())

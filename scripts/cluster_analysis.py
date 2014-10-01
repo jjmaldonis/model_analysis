@@ -28,46 +28,46 @@ def main():
     ag = AtomGraph(modelfile,cutoff)
     model = Model(modelfile)
     model.generate_neighbors(cutoff)
-    submodelfile = sys.argv[3]
+    #submodelfile = sys.argv[3]
 
-    mixedmodel = Model('Mixed atoms',model.lx,model.ly,model.lz, [atom for atom in ag.model.atoms if atom.vp.type == 'Mixed'])
-    icolikemodel = Model('Ico-like atoms',model.lx,model.ly,model.lz, [atom for atom in ag.model.atoms if(atom.vp.type == 'Icosahedra-like' or atom.vp.type == 'Full-icosahedra')])
-    fullicomodel = Model('Full-icosahedra atoms',model.lx,model.ly,model.lz, [atom for atom in ag.model.atoms if atom.vp.type == 'Full-icosahedra'])
-    xtalmodel = Model('Xtal-like atoms',model.lx,model.ly,model.lz, [atom for atom in ag.model.atoms if atom.vp.type == 'Crystal-like'])
-    undefmodel = Model('Undef atoms',model.lx,model.ly,model.lz, [atom for atom in ag.model.atoms if atom.vp.type == 'Undef'])
-    #mixedmodel.write_cif('mixed.cif')
-    #mixedmodel.write_our_xyz('mixed.xyz')
-    #icolikemodel.write_cif('icolike.cif')
-    #icolikemodel.write_our_xyz('icolike.xyz')
-    #fullicomodel.write_cif('fullico.cif')
-    #fullicomodel.write_our_xyz('fullico.xyz')
-    #xtalmodel.write_cif('xtal.cif')
-    #xtalmodel.write_our_xyz('xtal.xyz')
-    #undefmodel.write_cif('undef.cif')
-    #undefmodel.write_our_xyz('undef.xyz')
-    icomixedmodel = Model('ico+mix atoms',model.lx,model.ly,model.lz, mixedmodel.atoms + icolikemodel.atoms)
-    #mixedmodel.write_cif('icomixed.cif')
-    #mixedmodel.write_our_xyz('icomixed.xyz')
-    vpcoloredmodel = Model('vp colored atoms',model.lx,model.ly,model.lz, ag.model.atoms)
-    for atom in vpcoloredmodel.atoms:
-        if(atom.vp.type == 'Full-icosahedra'):
-            atom.z = 1
-        elif(atom.vp.type == 'Icosahedra-like'):
-            atom.z = 2
-        elif(atom.vp.type == 'Mixed'):
-            atom.z = 3
-        elif(atom.vp.type == 'Crystal-like'):
-            atom.z = 4
-        elif(atom.vp.type == 'Undef'):
-            atom.z = 5
-    #vpcoloredmodel.write_cif('vpcolored.cif')
-    #vpcoloredmodel.write_our_xyz('vpcolored.xyz')
-    subvpcoloredmodel = Model(submodelfile)
-    for atom in subvpcoloredmodel.atoms:
-        atom.z = vpcoloredmodel.atoms[ag.model.atoms.index(atom)].z
-    subvpcoloredmodel.write_cif('subvpcolored.cif')
-    subvpcoloredmodel.write_our_xyz('subvpcolored.xyz')
-    return
+    #mixedmodel = Model('Mixed atoms',model.lx,model.ly,model.lz, [atom for atom in ag.model.atoms if atom.vp.type == 'Mixed'])
+    #icolikemodel = Model('Ico-like atoms',model.lx,model.ly,model.lz, [atom for atom in ag.model.atoms if(atom.vp.type == 'Icosahedra-like' or atom.vp.type == 'Full-icosahedra')])
+    #fullicomodel = Model('Full-icosahedra atoms',model.lx,model.ly,model.lz, [atom for atom in ag.model.atoms if atom.vp.type == 'Full-icosahedra'])
+    #xtalmodel = Model('Xtal-like atoms',model.lx,model.ly,model.lz, [atom for atom in ag.model.atoms if atom.vp.type == 'Crystal-like'])
+    #undefmodel = Model('Undef atoms',model.lx,model.ly,model.lz, [atom for atom in ag.model.atoms if atom.vp.type == 'Undef'])
+    ##mixedmodel.write_cif('mixed.cif')
+    ##mixedmodel.write_our_xyz('mixed.xyz')
+    ##icolikemodel.write_cif('icolike.cif')
+    ##icolikemodel.write_our_xyz('icolike.xyz')
+    ##fullicomodel.write_cif('fullico.cif')
+    ##fullicomodel.write_our_xyz('fullico.xyz')
+    ##xtalmodel.write_cif('xtal.cif')
+    ##xtalmodel.write_our_xyz('xtal.xyz')
+    ##undefmodel.write_cif('undef.cif')
+    ##undefmodel.write_our_xyz('undef.xyz')
+    #icomixedmodel = Model('ico+mix atoms',model.lx,model.ly,model.lz, mixedmodel.atoms + icolikemodel.atoms)
+    ##mixedmodel.write_cif('icomixed.cif')
+    ##mixedmodel.write_our_xyz('icomixed.xyz')
+    #vpcoloredmodel = Model('vp colored atoms',model.lx,model.ly,model.lz, ag.model.atoms)
+    #for atom in vpcoloredmodel.atoms:
+    #    if(atom.vp.type == 'Full-icosahedra'):
+    #        atom.z = 1
+    #    elif(atom.vp.type == 'Icosahedra-like'):
+    #        atom.z = 2
+    #    elif(atom.vp.type == 'Mixed'):
+    #        atom.z = 3
+    #    elif(atom.vp.type == 'Crystal-like'):
+    #        atom.z = 4
+    #    elif(atom.vp.type == 'Undef'):
+    #        atom.z = 5
+    ##vpcoloredmodel.write_cif('vpcolored.cif')
+    ##vpcoloredmodel.write_our_xyz('vpcolored.xyz')
+    #subvpcoloredmodel = Model(submodelfile)
+    #for atom in subvpcoloredmodel.atoms:
+    #    atom.z = vpcoloredmodel.atoms[ag.model.atoms.index(atom)].z
+    #subvpcoloredmodel.write_cif('subvpcolored.cif')
+    #subvpcoloredmodel.write_our_xyz('subvpcolored.xyz')
+    #return
 
     golden = False
 
@@ -91,11 +91,12 @@ def main():
     #clusters = ag.get_vertex_sharing_clusters(cutoff,cluster_types) #Vertex
     #clusters = ag.get_edge_sharing_clusters(cutoff,cluster_types) #Edge
     #clusters = ag.get_face_sharing_clusters(cutoff,cluster_types) #Face
-    clusters = ag.get_interpenetrating_atoms(cutoff,cluster_types) #Interpenetrating
+    #clusters = ag.get_interpenetrating_atoms(cutoff,cluster_types) #Interpenetrating
     #clusters = ag.get_interpenetrating_clusters_with_neighs(cutoff,cluster_types) #Interpenetrating+neighs
     #clusters = ag.get_connected_clusters_with_neighs(cutoff, cluster_types) #Connected (vertex) + neighs
-    #v,e,f,i = ag.vefi_sharing(cluster_types)
-    #print("V: {0}  E: {1}  F: {2}  I: {3}".format(int(v),int(e),int(f),int(i)))
+    v,e,f,i = ag.vefi_sharing(cluster_types)
+    print("V: {0}  E: {1}  F: {2}  I: {3}".format(int(v),int(e),int(f),int(i)))
+    return
 
     orig_clusters = clusters[:]
     # Print orig clusters

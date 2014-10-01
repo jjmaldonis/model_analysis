@@ -192,7 +192,8 @@ def main():
         smtable[submodelfile] = {}
         for vptype in vp_dict:
             atom_dict_sm = generate_atom_dict(sm)
-            smtable[submodelfile][vptype] = len(atom_dict_sm[vptype]) / float(len(atom_dict_m[vptype]))
+            #smtable[submodelfile][vptype] = len(atom_dict_sm[vptype]) / float(len(atom_dict_m[vptype]))
+            smtable[submodelfile][vptype] = len(atom_dict_sm[vptype]) / float(sm.natoms)
     #for smf in submodelfiles:
     #    typedict = smtable[smf]
     #    print(smf)
@@ -201,7 +202,7 @@ def main():
     #    print("  Ratio of ico-like / xtal-like: {0}".format(typedict['Icosahedra-like']/typedict['Crystal-like']))
     #    print('')
     print_table(smtable)
-    #return
+    return
 
     # Calculate the ratio of spot intensitites
     spot_ints = []

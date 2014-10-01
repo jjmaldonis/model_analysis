@@ -368,6 +368,7 @@ def save_vp_atom_data(model,nedges,nnab,nablst,vvol):
                     atomi.vp.index[7] += 1
                 elif(nedges[i][j] == 10):
                     atomi.vp.index[8] += 1
+        atomi.vp.index = tuple(atomi.vp.index)
 
         nablst[i] = [model.atoms[x] for x in nablst[i]]
         atomi.vp.nnabsp = nnabsp[i]

@@ -76,8 +76,6 @@ def categorize_atoms(m,paramfile):
     Also stores vp_dict in the model. """
     vp_dict = load_param_file(paramfile)
     set_atom_vp_types(m,vp_dict)
-    for key in vp_dict.keys():
-        vp_dict[key[:key.index(':')]] = vp_dict.pop(key)
     m.vp_dict = vp_dict
 
 def categorize_index(ind, vp_dict):
@@ -109,11 +107,24 @@ def vor_stats(m):
             cats[atom.vp.type] = {}
         cats[atom.vp.type][atom.sym] = cats[atom.vp.type].get(atom.sym,0) + 1
         cats[atom.vp.type]["Total"] = cats[atom.vp.type].get("Total",0) + 1
+    # Print
     for key in cats:
         print("{0}: {1}".format(key,cats[key]["Total"]))
         for elem in cats[key]:
             if(elem != "Total"): print("   {0}: {1}".format(elem,cats[key][elem]))
     return cats
+
+def index_stats(m):
+    """ Prints the number of atoms in each VP index"""
+    indexes = {}
+    for atom in m.atoms:
+        indexes[atom.vp.index] = indexes.get(atom.vp.index,0) + 1
+    # Print
+    for val,key in sorted( ((v,k) for k,v in indexes.iteritems())): 
+        print("{0}: \t{1}".format(key,val))
+    return indexes
+
+
 
 def print_all(m):
     """ Prints the index and type of each atom in m """
@@ -143,15 +154,15 @@ def main():
     m = Model(modelfile)
 
     cutoff = {}
-    cutoff[(40,40)] = 3.5
-    cutoff[(13,29)] = 3.5
-    cutoff[(29,13)] = 3.5
-    cutoff[(40,13)] = 3.5
-    cutoff[(13,40)] = 3.5
-    cutoff[(29,40)] = 3.5
-    cutoff[(40,29)] = 3.5
-    cutoff[(13,13)] = 3.5
-    cutoff[(29,29)] = 3.5
+    cutoff[(40,40)] = 3.6
+    cutoff[(13,29)] = 3.6
+    cutoff[(29,13)] = 3.6
+    cutoff[(40,13)] = 3.6
+    cutoff[(13,40)] = 3.6
+    cutoff[(29,40)] = 3.6
+    cutoff[(40,29)] = 3.6
+    cutoff[(13,13)] = 3.6
+    cutoff[(29,29)] = 3.6
 
     voronoi_3d(m,cutoff)
     #m = fortran_voronoi_3d(modelfile,3.5)
@@ -195,6 +206,7 @@ def main():
 
 
     #print_all(m)
+    index_stats(m) # Prints index version of vor_stats
     vor_stats(m) # Prints what you probably want
 
 
