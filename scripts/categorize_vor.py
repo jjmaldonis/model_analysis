@@ -203,15 +203,19 @@ def main():
     m = Model(modelfile)
 
     cutoff = {}
-    cutoff[(40,40)] = 3.5
-    cutoff[(13,29)] = 3.5
-    cutoff[(29,13)] = 3.5
-    cutoff[(40,13)] = 3.5
-    cutoff[(13,40)] = 3.5
-    cutoff[(29,40)] = 3.5
-    cutoff[(40,29)] = 3.5
-    cutoff[(13,13)] = 3.5
-    cutoff[(29,29)] = 3.5
+    #cutoff[(40,40)] = 3.5
+    #cutoff[(13,29)] = 3.5
+    #cutoff[(29,13)] = 3.5
+    #cutoff[(40,13)] = 3.5
+    #cutoff[(13,40)] = 3.5
+    #cutoff[(29,40)] = 3.5
+    #cutoff[(40,29)] = 3.5
+    #cutoff[(13,13)] = 3.5
+    #cutoff[(29,29)] = 3.5
+    cutoff[(41,41)] = 3.7
+    cutoff[(28,28)] = 3.7
+    cutoff[(41,28)] = 3.7
+    cutoff[(28,41)] = 3.7
 
     voronoi_3d(m,cutoff)
     #m = fortran_voronoi_3d(modelfile,3.5)
@@ -256,7 +260,17 @@ def main():
 
     #print_all(m)
     vor_stats(m) # Prints what you probably want
-
+    for atom in m.atoms:
+        if( atom.vp.type == "Undef"):
+            print( atom.vp.index )
+    print( "")
+    for atom in m.atoms:
+         if( atom.vp.type == "Crystal-like"):
+             print(atom.vp.index )
+    print (m.atoms[163].vp.index)
+    print (m.atoms[163].vp.neighs)
+    print (m.atoms[163].coord)
+    print (m.atoms[163].id)
 
 if __name__ == "__main__":
     main()
