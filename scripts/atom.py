@@ -11,6 +11,15 @@ class VoronoiPoly(object):
         self.vol = None # This will be a float
         # Note: the center atom is this atom!
 
+    def copy(self):
+        new = VoronoiPoly()
+        new.index = copy.copy(self.index)
+        new.type = self.type
+        new.nnabsp = copy.copy(self.nnabsp)
+        new.neighs = copy.copy(self.neighs)
+        new.vol = self.vol
+        return new
+
 class Atom(object):
     """ atom class """
 
@@ -36,7 +45,8 @@ class Atom(object):
 
     def copy(self):
         new = Atom(self.id, self.z, self.coord[0], self.coord[1], self.coord[2])
-        new.vp = copy.deepcopy(self.vp)
+        #new.vp = copy.deepcopy(self.vp)
+        new.vp = self.vp.copy()
         new.neighs = copy.copy(self.neighs)
         new.cn = self.cn
         new.sym = self.sym

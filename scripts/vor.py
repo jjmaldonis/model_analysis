@@ -12,6 +12,21 @@ def fortran_voronoi_3d(modelfile,cutoff):
         vorrun.set_atom_vp_indexes(model)
         return model
 
+def parse_index_file_line(line):
+    """ All this does is convert the line to floats or ints """
+    line = line.strip().split()
+    for i in range(0,len(line)):
+        try:
+            line[i] = int(line[i])
+        except:
+            try:
+                line[i] = float(line[i])
+            except:
+                pass
+    # Now all the lines are read in and in integer or float form
+    # We care about columns 7-10, which are i3, i4, i5, i6.
+    return line
+
 class Vor(object):
     """ This class runs the fortran voronoi code, which you should compile and link into your bin.
         It will automatically generate a parameter file (*.vparm) used to run the code. """
@@ -77,7 +92,8 @@ class Vor(object):
         opf.write(self.gen_paramfile(modelfile,cutoff))
         opf.close()
 
-        p = subprocess.Popen(['/home/jjmaldonis/bin/vor',self.randstr+'.vparm',modelfile,self.randstr], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        #p = subprocess.Popen(['/home/jjmaldonis/bin/vor',self.randstr+'.vparm',modelfile,self.randstr], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        p = subprocess.Popen(['/home/maldonis/model_analysis/scripts/working/vorv4',self.randstr+'.vparm',modelfile,self.randstr], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.poutput = p.stdout.read()
         self.perr = p.stderr.read()
         self.preturncode = p.wait()
@@ -155,7 +171,44 @@ def main():
     print("Return code: "+str(vorrun.preturncode))
     print("Outbase: "+vorrun.randstr)
     #vorrun.del_files(vorrun.randstr)
+    with open(vorrun.randstr+'_stat.out') as f:
+        stats = f.readlines()
+    line = stats.pop(0)
+    stats[0] = line.strip() + stats[0]
+    header = stats.pop(0)
+    stats = [line.strip().split() for line in stats]
+    #for line in stats:
+    #    print(line)
+    stats = [[int(x) for x in line] for line in stats]
+    #for line in stats:
+    #    print(line)
+    stats.sort(key=lambda l:l[1], reverse=True)
+    #stats = [[str(x) for x in line] for line in stats]
+    #print(header.strip())
+    #for line in stats:
+    #    print('\t'.join(line))
+    #stats = [[int(x) for x in line] for line in stats]
 
+    sum = 0
+    for line in stats[0:5]:
+        sum += line[1]
+    print("There were {0} atoms = {1}% of the model in the top 5 VP indexes (more)".format(sum,round(float(sum)/1250.0,3)))
+    sum = 0
+    for line in stats[0:10]:
+        sum += line[1]
+    print("There were {0} atoms = {1}% of the model in the top 10 VP indexes (more)".format(sum,round(float(sum)/1250.0,3)))
+    sum = 0
+    for line in stats[0:15]:
+        sum += line[1]
+    print("There were {0} atoms = {1}% of the model in the top 15 VP indexes (more)".format(sum,round(float(sum)/1250.0,3)))
+    sum = 0.0
+    for i,line in enumerate(stats):
+        sum += line[1]/1250.0
+        if(sum > 0.90): break
+    print("90% of the model is composed of {0} VP indexes (less)".format(i))
+    for i,line in enumerate(stats):
+        if(line[1]/1250.0 < 0.01): break
+    print("There are {0} VP indexes that capture more than 1% of the model (less)".format(i))
 
 if __name__ == "__main__":
     main()

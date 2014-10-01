@@ -22,8 +22,9 @@ def voronoi_3d(model,cutoff):
     maxcan = 75
     maxver = 100
     maxepf = 20
-    atol = 0.05
-    tol = 0.05
+    atol = 0.03
+    tol = 0.03
+    tltol = 0.03
 
     nnab = []
     vvol = np.zeros(model.natoms)
@@ -32,11 +33,15 @@ def voronoi_3d(model,cutoff):
     nablst = []
     nedges = []
 
-    nedges,nnab,nablst,vvol = vp_analysis(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol)
+    nedges,nnab,nablst,vvol = vp_analysis(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol,tltol)
     save_vp_atom_data(model,nedges,nnab,nablst,vvol)
 
 
-def vp_analysis(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol):
+###@profile
+def vp_analysis(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol,tltol):
+    ilx = 1.0/model.lx
+    ily = 1.0/model.ly
+    ilz = 1.0/model.lz
     sumvol = 0.0
     volratio = 0.0
     vol = model.lx*model.ly*model.lz
@@ -45,7 +50,7 @@ def vp_analysis(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol):
     for key in weight_sp:
         weight_sp[key] = 1.0
     print_percent = 0.0
-    for i,atomi in enumerate(model.atoms):
+    for i,atomi in enumerate(iter(model.atoms)):
         p = []
         mtag = []
         #print("Calculating VP for atom {0}".format(i))
@@ -54,11 +59,14 @@ def vp_analysis(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol):
             print_percent += 5.0
         noi = i # Number of i, just make a copy of it
         #print("  Selecting candidates")
-        for j,atomj in enumerate(model.atoms):
+        for j,atomj in enumerate(iter(model.atoms)):
             if(i != j):
-                rxij = atomj.coord[0]/model.lx - atomi.coord[0]/model.lx
-                ryij = atomj.coord[1]/model.ly - atomi.coord[1]/model.ly
-                rzij = atomj.coord[2]/model.lz - atomi.coord[2]/model.lz
+                #rxij = atomj.coord[0]/model.lx - atomi.coord[0]/model.lx
+                #ryij = atomj.coord[1]/model.ly - atomi.coord[1]/model.ly
+                #rzij = atomj.coord[2]/model.lz - atomi.coord[2]/model.lz
+                rxij = atomj.coord[0]*ilx - atomi.coord[0]*ilx
+                ryij = atomj.coord[1]*ily - atomi.coord[1]*ily
+                rzij = atomj.coord[2]*ilz - atomi.coord[2]*ilz
                 rxij = rxij - round(rxij) #PBCs
                 ryij = ryij - round(ryij)
                 rzij = rzij - round(rzij)
@@ -212,8 +220,22 @@ def vp_analysis(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol):
             for ic in range(0,nc):
                 if(nepf[ic] != 0):
                     if( (area[ic] != 0) and (area[ic] < atol*tarea) ):
+                    #    for j in range(0,len(sleng)):
+                    #        try:
+                    #            sleng[j][ic] = 0
+                    #        except:
+                    #            pass
+                    #    print("Dropped a face!")
                         break
                     avglen = tleng[ic] / float(nepf[ic])
+                    #print(nepf[ic], sleng[j])
+                    #for j in range(0,nepf[ic]):
+                    #    try:
+                    #        if((sleng[j][ic] != 0.0) and (sleng[j][ic] < tltol*avglen)):
+                    #            sleng[j][ic] = 0
+                    #            print("Dropped an edge!")
+                    #    except:
+                    #        pass
             
         #print("  Generating nablst")
         # nedges will create the vp indexes

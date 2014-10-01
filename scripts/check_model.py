@@ -37,7 +37,8 @@ def atoms_in_box(model):
             atom.coord[1] > model.ly/2 or
             atom.coord[2] < -model.lz/2 or
             atom.coord[2] > model.lz/2):
-            raise Exception('ERROR! Atom {0} is out of your box! Coord: {1} Box: {2}'.format(atom,atom.coord,(model.lx/2,model.ly/2,model.lz/2)))
+            #raise Exception('ERROR! Atom {0} is out of your box! Coord: {1} Box: {2}'.format(atom,atom.coord,(model.lx/2,model.ly/2,model.lz/2)))
+            print('ERROR! Atom {0} is out of your box! Coord: {1} Box: {2}'.format(atom,atom.coord,(model.lx/2,model.ly/2,model.lz/2)))
     print("\nYour atom coords are all inside the box.\n")
 
 def atom_density(model):

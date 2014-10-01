@@ -1,7 +1,7 @@
 #import matplotlib
 #matplotlib.use('PDF')
 import copy
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import numpy as np
 from scipy.spatial import Voronoi, voronoi_plot_2d
 from pprint import pprint
@@ -60,6 +60,9 @@ class Model(object):
             self.atomtypes[atom.z] = self.atomtypes.get(atom.z, 0) + 1
 
         self.generate_position_arrays()
+
+    def __contains__(self,key):
+        return key in self.atoms
 
 
     def read_xyz(self,modelfile):
@@ -407,13 +410,13 @@ class Model(object):
             coords.append(atom.coord)
         return coords
 
-    def nn_vor(self):
-        coords = self.atom_coords()
-        vor = Voronoi(coords)
-        print(vor.vertices)
-        print(vor.regions)
-        voronoi_plot_2d(vor)
-        plt.show()
+    #def nn_vor(self):
+    #    coords = self.atom_coords()
+    #    vor = Voronoi(coords)
+    #    print(vor.vertices)
+    #    print(vor.regions)
+    #    voronoi_plot_2d(vor)
+    #    plt.show()
 
     def generate_position_arrays(self):
         self.xx = []

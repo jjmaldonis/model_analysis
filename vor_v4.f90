@@ -8,8 +8,9 @@ module shared_data
     real, parameter :: maxcan = 75 !75
     real, parameter :: maxver = 100 !100
     real, parameter :: maxepf = 20  !20
-    real, parameter :: atol = 0.35
-    real, parameter :: tol = 0.35
+    real, parameter :: atol = 0.03
+    real, parameter :: tltol = 0.03
+    real, parameter :: tol = 0.03
     integer, save :: nsp, atomtype_num
     integer, save :: ndata, natoms !nsp1, nsp2, nsp3
     integer, save, dimension(:), allocatable :: sp_natoms
@@ -444,13 +445,17 @@ subroutine vtanal!(maxcan, maxver, maxepf, natoms, world_size, noi, nc, nf, ne, 
         do  ic=1, nc
             if(nepf(ic) .ne. 0) then
                 if((area(ic) .ne. 0) .and.(area(ic) .lt. atol*tarea)) then
+                    sleng(:,ic) = 0
+                    write(*,*) "Dropped a face!"
                     exit
                 endif
                 avglen = tleng(ic)/real(nepf(ic))
-                !do j=1, nepf(ic)
-                    !if((sleng(j,ic) .ne. 0.0) .and. (sleng(j,ic) .lt. tltol*avglen)) then
-                    !endif
-                !enddo
+                do j=1, nepf(ic)
+                    if((sleng(j,ic) .ne. 0.0) .and. (sleng(j,ic) .lt. tltol*avglen)) then
+                    sleng(j,ic) = 0
+                    write(*,*) "Dropped an edge!"
+                    endif
+                enddo
             endif
         enddo
 
