@@ -207,12 +207,14 @@ class Model(object):
         self.atoms.append(atom)
         self.hutch.add_atom(atom)
         self.natoms += 1
+        self.atomtypes[atom.z] += 1
 
     def remove_atom(self,atom):
         # This doesn't update anything besides the hutch and self.atoms
         self.hutch.remove_atom(atom)
         self.atoms.remove(atom)
         self.natoms -= 1
+        self.atomtypes[atom.z] -= 1
 
     def generate_neighbors(self,cutoff):
         for atom in self.atoms:
