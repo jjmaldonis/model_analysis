@@ -6,8 +6,10 @@ def run_subproc(args):
     print("Running (via python): {0}".format(args))
     sargs = shlex.split(args)
     p = subprocess.Popen(sargs, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output = []
     for nextline in iter(p.stdout.readline, ""):
         sys.stdout.write(nextline)
+        output.append(nextline)
         sys.stdout.flush()
     poutput = p.stdout.read()
     perr = p.stderr.read()
@@ -15,6 +17,7 @@ def run_subproc(args):
     if(preturncode != 0):
         print("{0} exit status: {1}".format(args,preturncode))
         print("{0} failed: {1}".format(args,perr))
+    return ''.join(output)
 
 def main():
     import sys
