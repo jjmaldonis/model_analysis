@@ -36,27 +36,22 @@ def load_param_file(paramfile):
     # Open the input parameter file. Should be of the form:
     # Crystal:
     #     0,2,8,*
-    with open(paramfile) as f:
-        vp_params = [line.split(',') for line in f]
+    #with open(paramfile) as f:
+    #    vp_params = [line.split(',') for line in f]
+    vp_params = open(paramfile).readlines()
     # For each voronoi polyhedra 'structure', change it to an int if it's not a *
     vp_dict = {}
-    for vps in vp_params:
-        for i in range(0,len(vps)):
-            vps[i] = vps[i].strip()
-        if(len(vps) == 1):
-            # If there is a : at the end of the vps, get rid of it
-            if(':' == vps[0][-1]):
-                current_entry = vps[0][:-1]
-            else:
-                current_entry = vps[0]
+    for line in vp_params:
+        if(':' in line): # Title line
+            current_entry = line.strip()[:-1]
             vp_dict[current_entry] = []
-        elif(len(vps) == 4):
-            for i in range(0,4):
+        else: # Index line
+            vps = line.strip().split(',')
+            vps = [x.strip() for x in vps] # remove spaces if ", " rather than just ","
+            for i in range(len(vps)):
                 if(vps[i] != '*'):
                     vps[i] = int(vps[i])
             vp_dict[current_entry].append(vps)
-        else:
-            sys.exit("ERROR IN INPUT VP PARAMETERS. STOPPING.")
     return vp_dict
 
 def generate_atom_dict(model):
@@ -121,7 +116,11 @@ def index_stats(m):
         indexes[atom.vp.index] = indexes.get(atom.vp.index,0) + 1
     # Print
     for val,key in sorted( ((v,k) for k,v in indexes.iteritems())): 
-        print("{0}: \t{1}".format(key,val))
+        for atom in m.atoms:
+            if(atom.vp.index == key):
+                typ = atom.vp.type
+                break
+        print("{0}: \t{1}\t{2}".format(key,val,typ))
     return indexes
 
 
@@ -154,19 +153,25 @@ def main():
     m = Model(modelfile)
 
     cutoff = {}
-    #cutoff[(40,40)] = 3.5
-    #cutoff[(13,29)] = 3.5
-    #cutoff[(29,13)] = 3.5
-    #cutoff[(40,13)] = 3.5
-    #cutoff[(13,40)] = 3.5
-    #cutoff[(29,40)] = 3.5
-    #cutoff[(40,29)] = 3.5
-    #cutoff[(13,13)] = 3.5
-    #cutoff[(29,29)] = 3.5
+    cutoff[(40,40)] = 3.6
+    cutoff[(13,29)] = 3.6
+    cutoff[(29,13)] = 3.6
+    cutoff[(40,13)] = 3.6
+    cutoff[(13,40)] = 3.6
+    cutoff[(29,40)] = 3.6
+    cutoff[(40,29)] = 3.6
+    cutoff[(13,13)] = 3.6
+    cutoff[(29,29)] = 3.6
+
     cutoff[(41,41)] = 3.7
     cutoff[(28,28)] = 3.7
     cutoff[(41,28)] = 3.7
     cutoff[(28,41)] = 3.7
+
+    cutoff[(46,46)] = 3.6
+    cutoff[(14,14)] = 3.6
+    cutoff[(46,14)] = 3.6
+    cutoff[(14,46)] = 3.6
 
     voronoi_3d(m,cutoff)
     #m = fortran_voronoi_3d(modelfile,3.5)
@@ -181,6 +186,10 @@ def main():
     #atom_dict = generate_atom_dict(vorrun.index,vp_dict)
     #vor_cats.load_index_file(sys.argv[2])
     #printVorCats(atom_dict,vp_dict)
+
+    vor_stats(m) # Prints what you probably want
+    #index_stats(m)
+    return
 
     #m.generate_neighbors(3.5)
     #save_vp_cluster_with_index(m,[0,0,12,0])

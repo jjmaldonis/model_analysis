@@ -40,9 +40,9 @@ def submodel_vp_colored(m,sm,rotated=None):
 
 def get_spot_id(spotname):
     try:
-        id = int(spotname[spotname.index('_spot')+5:spotname.index('_spot')+7])
+        id = int(spotname[spotname.index('spot')+4:spotname.index('spot')+6])
     except:
-        id = int(spotname[spotname.index('_spot')+5])
+        id = int(spotname[spotname.index('spot')+4])
     return id
 
 def print_table(table):
@@ -202,7 +202,7 @@ def main():
     #    print("  Ratio of ico-like / xtal-like: {0}".format(typedict['Icosahedra-like']/typedict['Crystal-like']))
     #    print('')
     print_table(smtable)
-    return
+    #return
 
     # Calculate the ratio of spot intensitites
     spot_ints = []

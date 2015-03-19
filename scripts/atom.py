@@ -43,6 +43,13 @@ class Atom(object):
         self.cn = None # Coordination number. int when set
         self.sym = znum2sym.z2sym(self.z) #atomic symbol
 
+    def __getitem__(self,flag):
+        # This is used for sorting by id
+        if(flag == 'id'):
+            return self.id
+        else:
+            return None
+
     def copy(self):
         new = Atom(self.id, self.z, self.coord[0], self.coord[1], self.coord[2])
         #new.vp = copy.deepcopy(self.vp)

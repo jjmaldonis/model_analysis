@@ -64,6 +64,17 @@ class Model(object):
     def __contains__(self,key):
         return key in self.atoms
 
+    def __getitem__(self,atomId):
+        try:
+            if(self.atoms[atomId].id == atomId):
+                return self.atoms
+        except:
+            pass
+        for atom in self.atoms:
+            if(atom.id == atomId):
+                return atom
+        return None
+
 
     def read_xyz(self,modelfile):
         with open(modelfile) as f:
@@ -584,10 +595,10 @@ def main():
             m.write_our_xyz()
         elif(outtype == 'realxyz' or outtype == '.realxyz'):
             m.write_real_xyz()
-    else:
-        #m.local_composition('temp2.txt')
-        #m.radial_composition('temp.txt')
-        print m.composition()
+    #else:
+    #    #m.local_composition('temp2.txt')
+    #    #m.radial_composition('temp.txt')
+    #    print m.composition()
 
     ## create histogram of distances
     #dists = np.array(m.get_all_dists())
