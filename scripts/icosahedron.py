@@ -1,4 +1,5 @@
 """ This file generates a perfect <0,0,12,0> icosahedron.
+    It is actually called a dodecahedron (platonic solid).
     You can specify the bond length between nearest neighbor atoms in the code """
 
 
