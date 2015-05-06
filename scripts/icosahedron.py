@@ -5,7 +5,9 @@ import sys
 from math import sqrt
 from fractions import Fraction
 
-def dodecahedron(b,save=False):
+def dodecahedron(b,save=False,filename=None):
+    # http://en.wikipedia.org/wiki/Dodecahedron#Regular_dodecahedron
+    if(filename == None): filename = 'dodecahedron.xyz'
     # b is the nearest-neighbor interatomic bond distance
     p = 1.61803398875 # golden ratio
     b = b * 0.5 * p
@@ -42,7 +44,7 @@ def dodecahedron(b,save=False):
         for coord in coords:
             for x in coord:
                 if(abs(x) > m): m = abs(x)
-        f = open('dodecahedron.xyz','w')
+        f = open(filename,'w')
         f.write(str(len(coords))+'\n')
         f.write('{0} {0} {0} comment\n'.format(m))
         for c in coords:
@@ -50,7 +52,9 @@ def dodecahedron(b,save=False):
         f.close()
     return coords
 
-def icosahedron(b,save=False):
+def icosahedron(b,save=False,filename=None):
+    # http://en.wikipedia.org/wiki/Regular_icosahedron
+    if(filename == None): filename = 'icosahedron.xyz'
     # b is the nearest-neighbor interatomic bond distance
     b = b * sqrt(2)* 1.113516364 / 1.84375
     coords = dodecahedron(b)
@@ -77,7 +81,7 @@ def icosahedron(b,save=False):
         for coord in face_coords:
             for x in coord:
                 if(abs(x) > m): m = abs(x)
-        f = open('icosahedron.xyz','w')
+        f = open(filename,'w')
         f.write(str(len(face_coords))+'\n')
         f.write('{0} {0} {0} comment\n'.format(m))
         for c in face_coords:
@@ -87,8 +91,9 @@ def icosahedron(b,save=False):
 
 
 def main():
-    lattice_param = 2.
+    lattice_param = 1
     icosahedron(lattice_param,save=True)
+
 
 if __name__ == '__main__':
     main()
