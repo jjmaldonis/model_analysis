@@ -23,15 +23,38 @@ def makewave():
         of.write('END\n')
     of.close()
 
-def printTable(matrix):
-	# The input should be a matrix with col,row. E.g. matrix[0] is the first column to print
-	matrix = [[x if type(x) == type('a') else str(x) for x in col] for col in matrix]
-	rows = len(matrix[0])
-	cols = len(matrix)
-	colSpacing = [ 3+max([len(x) for x in matrix[i]]) for i in range(cols)]
-	table = ''
-	for r in range(rows):
-		for c in range(cols):
-			table = table + matrix[c][r] + ' '*(colSpacing[c]-len(matrix[c][r]))
-		table = table + '\n'
-	return table
+def printTable(matrix,transpose=False):
+    # The input should be a matrix with col,row. E.g. matrix[0] is the first column to print
+    # The second parameter allows you to transpose your input matrix
+    if(not transpose): # then by column
+        matrix = [[x if type(x) == type('a') else str(x) for x in col] for col in matrix]
+        rows = len(matrix[0])
+        cols = len(matrix)
+        colSpacing = [ 3+max([len(x) for x in matrix[i]]) for i in range(cols)]
+        table = ''
+        for r in range(rows):
+            for c in range(cols):
+                table = table + matrix[c][r] + ' '*(colSpacing[c]-len(matrix[c][r]))
+            table = table + '\n'
+        return table.strip()
+    else:
+        matrix = [[row[i] for row in matrix] for i in range(len(matrix[0]))]
+        matrix = [[x if type(x) == type('a') else str(x) for x in col] for col in matrix]
+        rows = len(matrix[0])
+        cols = len(matrix)
+        colSpacing = [ 3+max([len(x) for x in matrix[i]]) for i in range(cols)]
+        table = ''
+        for r in range(rows):
+            for c in range(cols):
+                table = table + matrix[c][r] + ' '*(colSpacing[c]-len(matrix[c][r]))
+            table = table + '\n'
+        #matrix = [[x if type(x) == type('a') else str(x) for x in row] for row in matrix]
+        #cols = len(matrix[0])
+        #rows = len(matrix)
+        #rowSpacing = [ 3+max([len(x) for x in matrix[i]]) for i in range(rows)]
+        #table = ''
+        #for c in range(rows):
+        #    for r in range(cols):
+        #        table = table + matrix[c][r] + ' '*(rowSpacing[c]-len(matrix[c][r]))
+        #    table = table + '\n'
+        return table.strip()

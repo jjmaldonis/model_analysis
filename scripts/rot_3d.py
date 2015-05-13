@@ -16,6 +16,7 @@ def rotate(m, a, axis):
         mat = [[cos(angle),sin(angle),0],[-sin(angle),cos(angle),0],[0,0,1]]
     m = np.array(m)
     mat = np.array(mat)
+    #print(np.dot(m,mat), np.dot(mat,m))
     return np.dot(mat,m)
 
 def calc_rot_array_from_hkl(h,k,l):
@@ -47,7 +48,7 @@ def rot(model, arr):
         NOTE! This changes the model atom positions in the model """
     if(type(arr) == list): arr = np.array(arr)
     if(arr.shape == (9,)): arr = arr.reshape((3,3))
-    print(arr)
+    #print(arr)
     arr = np.linalg.inv(arr)
     
     for i,atom in enumerate(model.atoms):
@@ -56,9 +57,12 @@ def rot(model, arr):
         atom.set_coord(new_coord[0],new_coord[1],new_coord[2])
 
 
-def calc_rot_array(t1,t2,t3):
+def calc_rot_array(t1,t2,t3,deg=True):
     """ We construct the rotation matrix based on t1,t2,t3
         NOTE! Order matters! """
+    t1 = t1*np.pi/180.0 # in radians
+    t2 = t2*np.pi/180.0 # in radians
+    t3 = t3*np.pi/180.0 # in radians
     rx = np.array( [ [1,0,0], [0,cos(t1),-sin(t1)], [0,sin(t1),cos(t1)] ] )
     ry = np.linalg.inv(np.array( [ [cos(t2),0,sin(t2)], [0,1,0], [-sin(t2),0,cos(t2)] ] ))
     rz = np.linalg.inv(np.array( [ [cos(t3),-sin(t3),0], [sin(t3),cos(t3),0], [0,0,1] ] ))
