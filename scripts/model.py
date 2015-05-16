@@ -32,6 +32,7 @@ class Model(object):
                 self.natoms
                 self.atomtypes
                 self.xx, self.yy, self.zz
+                self.filename
             Extra routines can set:
                 self.coord_numbers """
 
@@ -51,6 +52,7 @@ class Model(object):
             self.lz = args[3]
             self.atoms = [atom.copy() for atom in args[4]]
             self.natoms = len(args[4])
+            self.filename = 'None'
         else:
             raise Exception("Unknown input parameters to Model()!")
         if(self.lx and self.ly and self.lz):
@@ -81,6 +83,7 @@ class Model(object):
         with open(modelfile) as f:
             content = f.readlines()
 
+        self.filename = modelfile
         self.comment = content.pop(0) # Comment line
         if('' == content[-1].strip()): content.pop(-1)
         if('-1' in content[-1] and '.' not in content[-1]): # '-1' line
@@ -110,6 +113,8 @@ class Model(object):
     def read_dat(self,modelfile):
         with open(modelfile) as f:
             content = f.readlines()
+
+        self.filename = modelfile
         self.comment = content.pop(0) # Comment line
         content = [x for x in content if not x.startswith('#')]
 
