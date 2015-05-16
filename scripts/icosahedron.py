@@ -6,6 +6,9 @@ from math import sqrt
 from fractions import Fraction
 from model import Model
 from atom import Atom
+from rot_3d import rot as rotate
+from rot_3d import calc_rot_array
+from model_to_gams_input import convert
 
 def dodecahedron(b,save=False,filename=None):
     # http://en.wikipedia.org/wiki/Dodecahedron#Regular_dodecahedron
@@ -102,20 +105,38 @@ def icosahedron(b,save=False,filename=None):
         #f.close()
     return model
 
-def perturb_atom(m):
-    i = random.randint(0,m.natoms-1)
-    mindist = sorted(m.get_all_dists())[0][-1]
-    amount = random.uniform(-mindist/10,mindist/10)
-    axis = random.randint(0,2)
+def perturb_atom(m,i=None,amount=None,axis=None):
+    if(i == None):
+        i = random.randint(0,m.natoms-1)
+    if(axis == None):
+        axis = random.randint(0,2)
+    elif(axis == 'all'):
+        for axis in [0,1,2]:
+            perturb_atom(m,i=i,axis=axis)
+        return None
+    if(amount == None):
+        lx = m.lx
+        ly = m.ly
+        lz = m.lz
+        m.lx = 10000
+        m.ly = 10000
+        m.lz = 10000
+        mindist = sorted(m.get_all_dists())
+        m.lx = lx
+        m.ly = ly
+        m.lz = lz
+        mindist = mindist[0][-1]
+        frac = 10
+        amount = random.uniform(-mindist/frac,mindist/frac)
     c = list(m.atoms[i].coord)
     c[axis] = c[axis] + amount
     m.atoms[i].coord = tuple(c)
     #print("Perturbed atom {0} by {1} in direction {2}".format(i,amount,axis))
-    return m
+    return("Perturbed atom {0} by {1} in direction {2}".format(i,amount,axis))
 
-def swap_atom(m):
-    i = random.randint(0,m.natoms-1)
-    j = random.randint(0,m.natoms-1)
+def swap_atom(m,i=None,j=None):
+    if(i == None): i = random.randint(0,m.natoms-1)
+    if(j == None): j = random.randint(0,m.natoms-1)
     while(i == j): j = random.randint(0,m.natoms-1)
     atom = copy.deepcopy(m.atoms[i])
     m.atoms[i] = m.atoms[j]
@@ -123,22 +144,81 @@ def swap_atom(m):
     m.atoms[i].id = i
     m.atoms[j].id = j
     #print("Swapped atoms {0} and {1}".format(i,j))
-    return m
+    return("Swapped atoms {0} and {1}".format(i,j))
+
+def create_basic_models():
+    lattice_param = 1
+    a = 30
+    b = 135
+    c = 45
+    rot_arr = calc_rot_array(a,b,c,deg=True)
+
+    perfect = icosahedron(lattice_param,save=True,filename='icosahedron.perfect.xyz')
+    convert(perfect,'prototype','icosahedron.perfect.txt')
+
+    sm = copy.deepcopy(perfect)
+    swap_atom(sm,2,3)
+    sm.write_real_xyz('icosahedron.perfect.swap.xyz')
+    convert(sm,'polyhedron','icosahedron.perfect.swap.txt')
+
+    rm = copy.deepcopy(perfect)
+    rotate(rm,rot_arr)
+    rm.write_real_xyz('icosahedron.perfect.rot.xyz')
+    convert(rm,'polyhedron','icosahedron.perfect.rot.txt')
+
+    rm = copy.deepcopy(sm)
+    rotate(rm,rot_arr)
+    rm.write_real_xyz('icosahedron.perfect.swap.rot.xyz')
+    convert(rm,'polyhedron','icosahedron.perfect.swap.rot.txt')
+
+    imperfect = copy.deepcopy(perfect)
+    perturb_atom(imperfect,1,0.1,0)
+    imperfect.write_real_xyz('icosahedron.imperfect.xyz')
+    convert(imperfect,'prototype','icosahedron.imperfect.txt')
+
+    sim = copy.deepcopy(imperfect)
+    swap_atom(sim,2,3)
+    sim.write_real_xyz('icosahedron.imperfect.swap.xyz')
+    convert(sim,'polyhedron','icosahedron.imperfect.swap.txt')
+
+    rim = copy.deepcopy(imperfect)
+    rotate(rim,rot_arr)
+    rim.write_real_xyz('icosahedron.imperfect.rot.xyz')
+    convert(rim,'polyhedron','icosahedron.imperfect.rot.txt')
+
+    rim = copy.deepcopy(sim)
+    rotate(rim,rot_arr)
+    rim.write_real_xyz('icosahedron.imperfect.swap.rot.xyz')
+    convert(rim,'polyhedron','icosahedron.imperfect.swap.rot.txt')
+
+def create_randomized_model(num,dir=dir):
+    lattice_param = 1
+    perfect = icosahedron(lattice_param,save=False,filename='icosahedron.perfect.xyz')
+    for i in range(num):
+        print(i)
+        a = random.uniform(0,360)
+        b = random.uniform(0,360)
+        c = random.uniform(0,360)
+        #a = random.randrange(0,345,15)
+        #b = random.randrange(0,345,15)
+        #c = random.randrange(0,345,15)
+        rot_arr = calc_rot_array(a,b,c,deg=True)
+
+        imperfect = copy.deepcopy(perfect)
+        perturb_atom(imperfect,axis='all')
+        #swap_atom(imperfect)
+        imperfect.write_real_xyz(dir+'icosahedron.{0}.random.xyz'.format(i))
+        convert(imperfect,'polyhedron',dir+'icosahedron.{0}.random.txt'.format(i))
+        rotate(imperfect,rot_arr)
+        imperfect.write_real_xyz(dir+'icosahedron.{0}.random.rot.xyz'.format(i))
+        convert(imperfect,'polyhedron',dir+'icosahedron.{0}.random.rot.txt'.format(i))
 
 def main():
-    lattice_param = 1
-    perfect = icosahedron(lattice_param,save=True,filename='gams/icosahedron.xyz')
-    #for atom in perfect.atoms:
-    #    print(atom.coord)
-    #print('')
-    for i in range(10):
-        m = copy.deepcopy(perfect)
-        perturb_atom(m)
-        swap_atom(m)
-        #for atom in m.atoms:
-        #    print(atom.coord)
-        #print('')
-
+    #perfect = Model('icosahedron.perfect.xyz')
+    #imperfect = Model('icosahedron.imperfect.xyz')
+    #create_basic_models()
+    create_randomized_model(1000,dir='random_models/')
+    
 
 if __name__ == '__main__':
     main()
