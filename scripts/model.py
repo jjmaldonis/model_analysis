@@ -53,7 +53,8 @@ class Model(object):
             self.natoms = len(args[4])
         else:
             raise Exception("Unknown input parameters to Model()!")
-        self.hutch = Hutch(self)
+        if(self.lx and self.ly and self.lz):
+            self.hutch = Hutch(self)
 
         self.atomtypes = {}
         for atom in self.atoms:
@@ -84,7 +85,12 @@ class Model(object):
         if('' == content[-1].strip()): content.pop(-1)
         if('-1' in content[-1] and '.' not in content[-1]): # '-1' line
             content.pop(-1)
-        self.lx,self.ly,self.lz = tuple([float(x) for x in content.pop(0).strip().split()[0:3]])
+        try:
+            self.lx,self.ly,self.lz = tuple([float(x) for x in content.pop(0).strip().split()[0:3]])
+        except ValueError:
+            self.lx = None
+            self.ly = None
+            self.lz = None
 
         self.natoms = len(content)
         content = [x.strip().split() for x in content]
