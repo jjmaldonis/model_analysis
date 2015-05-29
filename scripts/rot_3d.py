@@ -60,9 +60,10 @@ def rot(model, arr):
 def calc_rot_array(t1,t2,t3,deg=True):
     """ We construct the rotation matrix based on t1,t2,t3
         NOTE! Order matters! """
-    t1 = t1*np.pi/180.0 # in radians
-    t2 = t2*np.pi/180.0 # in radians
-    t3 = t3*np.pi/180.0 # in radians
+    if(deg):
+        t1 = t1*np.pi/180.0 # in radians
+        t2 = t2*np.pi/180.0 # in radians
+        t3 = t3*np.pi/180.0 # in radians
     rx = np.array( [ [1,0,0], [0,cos(t1),-sin(t1)], [0,sin(t1),cos(t1)] ] )
     ry = np.linalg.inv(np.array( [ [cos(t2),0,sin(t2)], [0,1,0], [-sin(t2),0,cos(t2)] ] ))
     rz = np.linalg.inv(np.array( [ [cos(t3),-sin(t3),0], [sin(t3),cos(t3),0], [0,0,1] ] ))
