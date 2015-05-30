@@ -21,21 +21,12 @@ class VoronoiPoly(object):
         return new
 
 class Atom(object):
-    """ atom class """
-
     def __init__(self, id, znum, x, y, z):
-        """ constructor 
-        id = atom id (from 0 to natoms)
-        znum = atomic number
-        x = x coordinate
-        y = y coordinate
-        z = z coordinate """
-
         super(Atom, self).__init__()
         self.id = id
-        if(type(znum) == type(0)):
+        if(isinstance(znum,int)):
             self.z = znum
-        elif(type(znum) == type('string')):
+        elif(isinstance(znum,str)):
             self.z = znum2sym.sym2z(znum)
         self.coord = (x,y,z)
         self.vp = VoronoiPoly()
@@ -43,20 +34,14 @@ class Atom(object):
         self.cn = None # Coordination number. int when set
         self.sym = znum2sym.z2sym(self.z) #atomic symbol
 
-    def __getitem__(self,flag):
-        # This is used for sorting by id
-        if(flag == 'id'):
-            return self.id
-        else:
-            return None
+    def __eq__(self,other):
+        return (self.z == other.z and self.coord == other.coord)
 
     def copy(self):
         new = Atom(self.id, self.z, self.coord[0], self.coord[1], self.coord[2])
-        #new.vp = copy.deepcopy(self.vp)
         new.vp = self.vp.copy()
         new.neighs = copy.copy(self.neighs)
         new.cn = self.cn
-        new.sym = self.sym
         return new
 
     def __eq__(self,item):
@@ -66,12 +51,10 @@ class Atom(object):
             return True
         else:
             return False
-    def __ne__(self,item):
-        return not self == item
 
     def __repr__(self):
-        #return str(self.id)
-        return str(self.id)+'\t'+str(self.z)+'\t('+str(round(self.coord[0],3))+','+str(round(self.coord[1],3))+','+str(round(self.coord[2],3))+')'
+        return str(self.id)
+        #return str(self.id)+'\t'+str(self.z)+'\t('+str(round(self.coord[0],3))+','+str(round(self.coord[1],3))+','+str(round(self.coord[2],3))+')'
         #return str(self.id)
         #if(type(self.z) != type('hi')):
         #    return str(self.id) + '\t' + str(self.z) + '\t' + str(self.coord[0]) + '\t' + str(self.coord[1]) + '\t' + str(self.coord[2])
@@ -80,34 +63,23 @@ class Atom(object):
 
         #Format: (no znum): id x y z
         #return str(self.id) + '\t' + str(self.coord[0]) + '\t' + str(self.coord[1]) + '\t' + str(self.coord[2])
-    def vesta(self):
-        """ returns a string with the atoms information in the format for the vesta input file """
-        if(type(self.z) != type('hi')):
-            return znum2sym.z2sym(self.z) + '\t' + str(self.coord[0]) + '\t' + str(self.coord[1]) + '\t' + str(self.coord[2])
-        elif(type(self.z) == type('hi')):
-            return self.z + '\t' + str(self.coord[0]) + '\t' + str(self.coord[1]) + '\t' + str(self.coord[2])
-    def ourxyz(self):
-        return str(self.z)+'\t'+str(self.coord[0])+'\t'+str(self.coord[1])+'\t'+str(self.coord[2])
-    def realxyz(self):
-        return str(znum2sym.z2sym(self.z))+'\t'+str(self.coord[0])+'\t'+str(self.coord[1])+'\t'+str(self.coord[2])
+
+    @property
     def frac11(self,lx,ly,lz):
-        """ returns the coordinatese in fractional form between -1 and 1
-            inputs are the world sizes """
+        """ Returns the coordinatese in fractional form between -1 and 1. Inputs are the world sizes """
         return str(self.coord[0]/lx*2)+'\t'+str(self.coord[1]/ly*2)+'\t'+str(self.coord[2]/lz*2)
+    @property
     def frac01(self,lx,ly,lz):
-        """ returns the coordinatese in fractional form between 0 and 1
-            inputs are the world sizes """
+        """ Returns the coordinatese in fractional form between 0 and 1. Inputs are the world sizes """
         return str(self.coord[0]/lx)+'\t'+str(self.coord[1]/ly)+'\t'+str(self.coord[2]/lz)
         
     def set_vp(self,index,center,type=None):
         self.vp.index = index
         self.vp.center = center
         self.vp.type = type
-    def set_vp_type(self,type):
-        self.vp.type = type
 
     def compute_vp_type(self,vp_dict):
-        """ Computes, sets, and returns the vp type based on the input dictionary, which is constructed from a file """
+        """ Computes, sets, and returns the vp type based on the input dictionary """
         try:
             self.vp
         except:
@@ -123,24 +95,9 @@ class Atom(object):
                     return key[:-1]
         #raise Exception("The voronoi polyhedra for atom {0} could not be determined!".format(self))
         return "Undef"
+    def realxyz(self):
+        return str(znum2sym.z2sym(self.z))+'\t'+str(self.coord[0])+'\t'+str(self.coord[1])+'\t'+str(self.coord[2])
     
-    def convert_to_sym(self):
-        self.z = znum2sym.z2sym(self.z)
-        return self
-
-    def set_id(self,id):
-        self.id = id
-        return self
-    def set_coord(self,x,y,z):
-        self.coord = (x,y,z)
-        return self
-
-    def set_znum(self,z):
-        self.z = z
-        return self
-    def get_znum(self):
-        return self.z
-
 def main():
     atom = Atom(0,13,0.0,0.0,0.0)
     print(atom)

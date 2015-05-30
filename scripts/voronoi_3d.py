@@ -3,7 +3,7 @@ import os
 import random
 import math,time
 import numpy as np
-from model import Model
+from refactored_model import Model
 
 
 class MyError(Exception):
@@ -11,7 +11,6 @@ class MyError(Exception):
         self.value = value
     def __str__(self):
         return repr(self.value)
-
 
 def frac(atom,model):
     # Returns the coordinate of atom in fractional coordinates between 0 and 1
@@ -33,6 +32,7 @@ def voronoi_3d(model,cutoff):
     nablst = []
     nedges = []
 
+    if(not model.atoms[0].neighs): model.generate_neighbors(cutoff)
     nedges,nnab,nablst,vvol = vp_analysis(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol,tltol)
     save_vp_atom_data(model,nedges,nnab,nablst,vvol)
 
@@ -56,37 +56,31 @@ def vp_analysis(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol,tltol):
         #print("Calculating VP for atom {0}".format(i))
         if(100.0*i/model.natoms > print_percent):
             print("{0}% done...".format(print_percent))
-            print_percent += 5.0
-        noi = i # Number of i, just make a copy of it
-        #print("  Selecting candidates")
-        for j,atomj in enumerate(iter(model.atoms)):
-            if(i != j):
-                #rxij = atomj.coord[0]/model.lx - atomi.coord[0]/model.lx
-                #ryij = atomj.coord[1]/model.ly - atomi.coord[1]/model.ly
-                #rzij = atomj.coord[2]/model.lz - atomi.coord[2]/model.lz
-                rxij = atomj.coord[0]*ilx - atomi.coord[0]*ilx
-                ryij = atomj.coord[1]*ily - atomi.coord[1]*ily
-                rzij = atomj.coord[2]*ilz - atomi.coord[2]*ilz
-                rxij = rxij - round(rxij) #PBCs
-                ryij = ryij - round(ryij)
-                rzij = rzij - round(rzij)
-                # These four lines implement weighted voronoi analysis
-                ratio = 2*weight_sp[atomi.z]/(weight_sp[atomi.z]+weight_sp[atomj.z])
-                rxij=rxij*ratio*model.lx
-                ryij=ryij*ratio*model.ly
-                rzij=rzij*ratio*model.lz
-                rijsq = rxij**2 + ryij**2 + rzij**2
-                # Select all atoms within cutoff of atomi
-                # Can set a cutoff for each species, but I dont implement it.
-                try:
-                    thiscut = cutoff[(atomi.z,atomj.z)]
-                    if(rijsq < thiscut**2):
-                        p.append([rxij, ryij, rzij, rijsq]) # I dont know why we save this information, but it is the distance information
-                        mtag.append(j) #???
-                except TypeError:
-                    if(rijsq < cutoff**2):
-                        p.append([rxij, ryij, rzij, rijsq]) # I dont know why we save this information, but it is the distance information
-                        mtag.append(j) #???
+            print_percent += 10.0
+        for j,atomj in enumerate(atomi.neighs):
+            #if(i == j): continue
+            rxij = atomj.coord[0]*ilx - atomi.coord[0]*ilx
+            ryij = atomj.coord[1]*ily - atomi.coord[1]*ily
+            rzij = atomj.coord[2]*ilz - atomi.coord[2]*ilz
+            rxij = rxij - round(rxij) #PBCs
+            ryij = ryij - round(ryij)
+            rzij = rzij - round(rzij)
+            # These four lines implement weighted voronoi analysis
+            ratio = 2*weight_sp[atomi.z]/(weight_sp[atomi.z]+weight_sp[atomj.z])
+            rxij=rxij*ratio*model.lx
+            ryij=ryij*ratio*model.ly
+            rzij=rzij*ratio*model.lz
+            rijsq = rxij**2 + ryij**2 + rzij**2
+            # Select all atoms within cutoff of atomi, cutoff is based on species
+            try:
+                thiscut = cutoff[(atomi.z,atomj.z)]
+                if(rijsq < thiscut**2):
+                    p.append([rxij, ryij, rzij, rijsq])
+                    mtag.append(j) #???
+            except TypeError:
+                if(rijsq < cutoff**2):
+                    p.append([rxij, ryij, rzij, rijsq])
+                    mtag.append(j) #???
 
         # Candidates have been selected
         nc = len(p)
@@ -131,10 +125,10 @@ def vp_analysis(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol,tltol):
             #print(nloop[4][2])
             #print("  Connects modify nloop")
             # For each connection
-            for ic in range(0,nc):
+            for ic in xrange(0,nc):
                 if(nepf[ic] >= 0): #This is unnecessary
                     #print(ic,nepf[ic])
-                    for ie in range(0,nepf[ic]+1):
+                    for ie in xrange(0,nepf[ic]+1):
                         #print(ic,ie)
                         #if(ic == 4 and ie == 2):
                         #    iv = nloop[ie][ic]
@@ -160,7 +154,7 @@ def vp_analysis(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol,tltol):
                             #print("{0} {1} {2} {3}".format(iv,iv1,mvijk[iv],mvijk[iv1]))
                             if( not connect(iv,iv1,mvijk)):
                                 #print("{2} {3} Not connect\t{0}\t{1}".format(iv,iv1,ic,ie))
-                                for je in range(ie+2,nepf[ic]+1):
+                                for je in xrange(ie+2,nepf[ic]+1):
                                     #print("je=",je)
                                     jv = nloop[je][ic]
                                     if(connect(iv,jv,mvijk)):
@@ -179,12 +173,12 @@ def vp_analysis(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol,tltol):
             #        print("{0} {1} {2}".format(ie,ic,nloop[ie][ic]))
                 
             #print("  Volume and area calculations")
-            for ic in range(0,nc):
+            for ic in xrange(0,nc):
                 sleng.append([])
                 tleng.append(0.0)
                 area.append(0.0)
                 if(nepf[ic] != 0):
-                    for j in range(0,nepf[ic]):
+                    for j in xrange(0,nepf[ic]):
                         #print('DEBUG-3',ic,j)
                         ivs = nloop[j][ic]
                         if(j == nepf[ic]):
@@ -217,7 +211,7 @@ def vp_analysis(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol,tltol):
 
             # drop small faces / edges, optional
             avgarea = tarea/nf
-            for ic in range(0,nc):
+            for ic in xrange(0,nc):
                 if(nepf[ic] != 0):
                     if( (area[ic] != 0) and (area[ic] < atol*tarea) ):
                     #    for j in range(0,len(sleng)):
@@ -242,10 +236,10 @@ def vp_analysis(model,cutoff,nedges,nnab,nablst,vvol,ibad,nbad,tol,atol,tltol):
         nedges.append([]) # Create the ith position in nedges
         nnab.append(0)
         nablst.append([])
-        for ic in range(0,nc):
+        for ic in xrange(0,nc):
             nedges[i].append(0)
             if(nepf[ic] != 0):
-                for j in range(0,nepf[ic]):
+                for j in xrange(0,nepf[ic]):
                     if(sleng[ic][j] != 0):
                         nedges[i][ic] += 1 #???
                 if(nedges[i][ic] != 0):
@@ -267,12 +261,12 @@ def work(nc,tol,nbad,ibad,p):
     mvijk = [] # This will be a 2D matrix of size nv x 3
     v = []
     iv = 0
-    for i in range(0,nc-2):
+    for i in xrange(0,nc-2):
         ai = p[i][0] #rx for connection i
         bi = p[i][1] #ry for connection i
         ci = p[i][2] #rz for connection i
         di = -p[i][3] #dist for connection i
-        for j in range(i+1,nc-1):
+        for j in xrange(i+1,nc-1):
             aj = p[j][0]
             bj = p[j][1]
             cj = p[j][2]
@@ -283,7 +277,7 @@ def work(nc,tol,nbad,ibad,p):
             da = di * aj - dj * ai
             db = di * bj - dj * bi
             dc = di * cj - dj * ci
-            for k in range(j+1,nc):
+            for k in xrange(j+1,nc):
                 ak = p[k][0]
                 bk = p[k][1]
                 ck = p[k][2]
@@ -314,7 +308,7 @@ def work(nc,tol,nbad,ibad,p):
     nepf = [0]*nc # Number of edges per face
     nloop = np.zeros((75,nv),dtype=int).tolist() # ??? Change 75 to something more concrete, or use append somehow
     # This seems strange but I'm okay with it I think.
-    for iv in range(0,nv):
+    for iv in xrange(0,nv):
         # This is done in fortran
         nepf[mvijk[iv][0]] += 1
         nepf[mvijk[iv][1]] += 1
@@ -346,7 +340,7 @@ def save_vp_atom_data(model,nedges,nnab,nablst,vvol):
             nnabsp[i][key] = 0
         atomi.vp.index = [0,0,0,0,0,0,0,0]
 
-        for j in range(0,len(nedges[i])):
+        for j in xrange(0,len(nedges[i])):
             if(nedges[i][j] > 0):
                 nnabsp[i][model.atoms[nablst[i][j]].z] += 1
                 # nedges is one off, thats why we start at 2 and not 3
@@ -382,7 +376,7 @@ def print_data(model):
     for i,atomi in enumerate(model.atoms):
         keys = atomi.vp.nnabsp.keys()
         s = str( atomi.vp.nnabsp[keys[0]] )
-        for j in range(1,len(keys)):
+        for j in xrange(1,len(keys)):
             s += '\t' + str( atomi.vp.nnabsp[keys[j]] )
         #print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(i,atomi.z,nnab[i],s,atomi.vp.index,atomi.vp.vol))
         print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(i,atomi.z,sum(atomi.vp.index),s,atomi.vp.index,atomi.vp.vol))
@@ -391,8 +385,8 @@ def print_data(model):
 
 def connect(i,j,mvijk):
     np = 0
-    for ii in range(0,3):
-        for jj in range(0,3):
+    for ii in xrange(0,3):
+        for jj in xrange(0,3):
             if(mvijk[i][ii] == mvijk[j][jj]): np += 1
 
     if(np == 0): raise Exception("Not connected, same ic?")
