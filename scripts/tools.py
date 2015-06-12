@@ -1,4 +1,36 @@
-import cPickle
+#import cPickle
+
+def drange(start, stop, step):
+    r = start
+    if(stop > start):
+        while r < stop:
+            yield r
+            r += step
+    else:
+        while r > stop:
+            yield r
+            r += step
+
+def run_subproc(args):
+    """ args should be the string that you would normally run from bash """
+    import subprocess
+    import shlex
+    import sys
+    #print("Running (via python): {0}".format(args))
+    sargs = shlex.split(args)
+    p = subprocess.Popen(sargs)#, stdout=subprocess.STDOUT, stderr=subprocess.STDOUT)
+    #output = []
+    #for nextline in iter(p.stdout.readline, ""):
+    #    sys.stdout.write(nextline)
+    #    output.append(nextline)
+    #    sys.stdout.flush()
+    #poutput = p.stdout.read()
+    #perr = p.stderr.read()
+    #preturncode = p.wait()
+    #if(preturncode != 0):
+    #    print("{0} exit status: {1}".format(args,preturncode))
+    #    print("{0} failed: {1}".format(args,perr))
+    #return ''.join(output)
 
 def save_obj(obj, filename ):
     with open(filename, 'wb') as f:

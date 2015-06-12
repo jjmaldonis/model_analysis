@@ -108,7 +108,7 @@ class Hutch(object):
         hutches = [tuple([q if 0<=q<self.nhutchs else q%self.nhutchs for q in h]) for h in hutches] #pbc
         atoms = [ atom for hutch in hutches for atom in self.hutchs[hutch]
             if(self.model.dist2(atom,theatom) < r2[(atom.z,theatom.z)]) ]
-        #if(theatom in atoms): atoms.remove(theatom)
+        if(theatom in atoms): atoms.remove(theatom)
         return atoms
 
 def main():
