@@ -75,11 +75,8 @@ class Model(object):
         try:
             if(self.atoms[atomId].id == atomId):
                 return self.atoms[atomId]
-<<<<<<< HEAD
-=======
             else:
                 raise Exception("Atom positions have been shuffled or you gave an out of bounds index.")
->>>>>>> 806740f8f996d7a1aea478cdeebdf135114057bc
         except:
             for atom in self.atoms:
                 if(atom.id == atomId):
