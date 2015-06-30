@@ -74,7 +74,7 @@ class Model(object):
     def __getitem__(self,atomId):
         try:
             if(self.atoms[atomId].id == atomId):
-                return self.atoms
+                return self.atoms[atomId]
         except:
             pass
         for atom in self.atoms:
@@ -186,6 +186,7 @@ class Model(object):
         if(ext == 'xyz'):   self._write_xyz(outfile)
         elif(ext == 'dat'): self._write_dat(outfile)
         elif(ext == 'cif'): self._write_cif(outfile)
+        return ''
 
     def _write_dat(self,outfile=None):
         if outfile is None: of = sys.stdout
@@ -420,6 +421,9 @@ class Model(object):
             of.write('END\n')
             of.write('X SetScale x 0,{1}, {0};\n'.format('partial_comp_'+znum2sym.z2sym(atomtype),npix*dx-dx))
         of.close()
+
+    def __str__(self):
+        return self.write()
 
             
     def local_composition(self, outfile):

@@ -3,7 +3,7 @@ import os
 import random
 import math,time
 import numpy as np
-from refactored_model import Model
+from model import Model
 
 
 class MyError(Exception):

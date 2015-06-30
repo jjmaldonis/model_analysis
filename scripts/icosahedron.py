@@ -215,9 +215,11 @@ def create_randomized_model(num,dir=dir):
 
 def main():
     #perfect = Model('icosahedron.perfect.xyz')
+    perfect = icosahedron(2.85)
+    print(perfect)
     #imperfect = Model('icosahedron.imperfect.xyz')
     #create_basic_models()
-    create_randomized_model(1000,dir='random_models/')
+    #create_randomized_model(1000,dir='random_models/')
     
 
 if __name__ == '__main__':
