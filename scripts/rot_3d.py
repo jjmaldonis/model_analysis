@@ -1,7 +1,7 @@
 import sys
 import numpy as np
 from model import Model
-from math import cos, sin, atan2, sqrt
+from math import cos, sin, atan2, sqrt, pi
 
 def rotate(m, a, axis):
     # This is rot from http://www.ks.uiuc.edu/Research/vmd/doxygen/Matrix4_8C-source.html
@@ -69,6 +69,31 @@ def calc_rot_array(t1,t2,t3,deg=True):
     rz = np.linalg.inv(np.array( [ [cos(t3),-sin(t3),0], [sin(t3),cos(t3),0], [0,0,1] ] ))
     arr = np.dot( np.dot(ry,rx) ,rz)
     return np.linalg.inv(arr)
+
+def rot_point(point, linepoint, unitvec, theta):
+    # See last result:
+    # http://inside.mines.edu/fs_home/gmurray/ArbitraryAxisRotation/ArbitraryAxisRotation.pdf
+    # theta must be in radians
+    # unitvec is the line direction, it will be normalized to a unit vector no matter what
+    # linepoint is a point on the line through which to rotate
+    # point is the x,y,z point you want to rotate
+    # Usage:
+    # x,y,z = rot( (1,3,-5), (-3,-2,-3), (-1,3,0), 58/180*pi )
+    # print(x,y,z)
+    x,y,z = point
+    a,b,c = linepoint
+    u,v,w = unitvec
+    L = sqrt( sum(unitvec[i]*unitvec[i] for i in range(len(unitvec))) )
+    u /= L
+    v /= L
+    w /= L
+
+    nx = (a*(v**2 + w**2) - u*(b*v + c*w - u*x - v*y - w*z)) * (1 - cos(theta)) + x*cos(theta) + (-c*v + b*w - w*y + v*z)*sin(theta)
+
+    ny = (b*(u**2 + w**2) - v*(a*u + c*w - u*x - v*y - w*z)) * (1 - cos(theta)) + y*cos(theta) + ( c*u - a*w + w*x - u*z)*sin(theta)
+
+    nz = (c*(u**2 + v**2) - w*(a*u + b*v - u*x - v*y - w*z)) * (1 - cos(theta)) + z*cos(theta) + (-b*u + a*v - v*x + u*y)*sin(theta)
+    return nx,ny,nz
 
 
 def main():

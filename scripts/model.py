@@ -75,14 +75,19 @@ class Model(object):
         try:
             if(self.atoms[atomId].id == atomId):
                 return self.atoms[atomId]
+<<<<<<< HEAD
+=======
+            else:
+                raise Exception("Atom positions have been shuffled or you gave an out of bounds index.")
+>>>>>>> 806740f8f996d7a1aea478cdeebdf135114057bc
         except:
-            pass
-        for atom in self.atoms:
-            if(atom.id == atomId):
-                return atom
+            for atom in self.atoms:
+                if(atom.id == atomId):
+                    return atom
         return None
 
     def __len__(self):
+        assert self.natoms == len(self.atoms)
         return self.natoms
         
     def add(self,atom):
@@ -122,9 +127,9 @@ class Model(object):
         self.natoms = 0
         with open(modelfile) as f:
             natoms = int(f.readline().strip())
-            comment = f.readline().strip()
+            self.comment = f.readline().strip()
             try:
-                self.lx,self.ly,self.lz = tuple([float(x) for x in comment.split()[:3]])
+                self.lx,self.ly,self.lz = tuple([float(x) for x in self.comment.split()[:3]])
             except:
                 self.lx,self.ly,self.lz = (None,None,None)
             for i in range(natoms):
