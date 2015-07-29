@@ -40,7 +40,7 @@ def main():
     m = Model(modelfile)
 
     recenter_model(m)
-    m.write_our_xyz('temp.xyz')
+    m.write(ext='cif')
 
 if __name__ == "__main__":
     main()

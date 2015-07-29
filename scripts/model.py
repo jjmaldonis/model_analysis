@@ -102,7 +102,7 @@ class Model(object):
         """ Removes atom 'atom' from the model """
         try:
             self.hutch.remove_atom(atom)
-        except AttributeError:
+        except:# AttributeError or ValueError:
             pass
         self.atoms.remove(atom)
         self.natoms -= 1
@@ -487,16 +487,7 @@ def main():
     if(len(sys.argv) > 3):
         if(sys.argv[2] == '-o'):
             outtype = sys.argv[3]
-            outflag = True
-    if(outflag):
-        if(outtype == 'dat' or outtype == '.dat'):
-            m.write_dat()
-        elif(outtype == 'cif' or outtype == '.cif'):
-            m.write_cif()
-        elif(outtype == 'xyz' or outtype == '.xyz'):
-            m.write_our_xyz()
-        elif(outtype == 'realxyz' or outtype == '.realxyz'):
-            m.write_real_xyz()
+            m.write(ext=outtype)
 
 if __name__ == "__main__":
     main()
