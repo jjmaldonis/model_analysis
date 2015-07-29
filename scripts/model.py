@@ -64,7 +64,7 @@ class Model(object):
             self.hutch = Hutch(self)
 
         if(not hasattr(self,'atomtypes')):
-            self.atomtypes = {} # TODO make into a Counter
+            self.atomtypes = defaultdict(int)
             for atom in self.atoms:
                 self.atomtypes[atom.z] = self.atomtypes.get(atom.z, 0) + 1
 
