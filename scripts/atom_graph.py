@@ -51,8 +51,8 @@ class AtomGraph(object):
         voronoi_3d(self.model,cutoff)
         
         #vorcats = VorCats('/home/jjmaldonis/OdieCode/vor/scripts/categorize_parameters.txt')
-        #self.vp_dict = categorize_vor.load_param_file('/home/jjmaldonis/model_analysis/scripts/categorize_parameters.txt')
-        self.vp_dict = categorize_vor.load_param_file('/home/maldonis/model_analysis/scripts/categorize_parameters_iso.txt')
+        self.vp_dict = categorize_vor.load_param_file('/home/jjmaldonis/model_analysis/scripts/categorize_parameters_iso.txt')
+        #Eself.vp_dict = categorize_vor.load_param_file('/home/maldonis/model_analysis/scripts/categorize_parameters_iso.txt')
         #self.atom_dict = categorize_vor.generate_atom_dict(index,self.vp_dict)
         #vorcats.save(index)
         categorize_vor.set_atom_vp_types(self.model,self.vp_dict)
@@ -407,23 +407,15 @@ class AtomGraph(object):
         m = Model(self.model.comment, self.model.lx, self.model.ly, self.model.lz, self.model.atoms[:])
         m.generate_neighbors(cutoff)
         vp_atoms = []
-        #print(cluster_types)
         neighs = [[]]*m.natoms
-        for i,atom in enumerate(m.atoms):
-            if(atom.vp.type in cluster_types):
-                vp_atoms.append(atom.copy())
-            # If the atom is of non-VP type, just set its neighbors to the VP types
-            # it does have neighbor with (after we are done searching thru the VP).
-            # Well, do this if we aren't just searching for interpenentrating atoms.
-            elif(numneighs > 0):
-                ind = m.atoms.index(atom)
-                neighs[ind] = [n for n in atom.neighs if n.vp.type in cluster_types]
+        vp_atoms = [atom.copy() for atom in m.atoms if atom.vp.type in cluster_types]
+        neighs = [[n for n in atom.neighs if n.vp.type in cluster_types] for atom in m.atoms]
         numfound = 0
-        for i,atomi in enumerate(vp_atoms):
-            # Interpenetrating
-            ind = m.atoms.index(atomi)
-            neighs[ind] = neighs[ind] + copy.copy([ n for n in atomi.neighs if n.vp.type in cluster_types if n not in neighs[ind]])
-            if(numneighs > 0):
+        if(numneighs > 0): # Look for vertex, edge, or face sharing
+            for i,atomi in enumerate(vp_atoms):
+                print(i)
+                # Interpenetrating
+                ind = m.atoms.index(atomi)
                 for j,atomj in enumerate(vp_atoms[vp_atoms.index(atomi)+1:]):
                     # Get all the neighbors they have in common
                     common_neighs = [n for n in atomi.neighs if n in atomj.neighs]
@@ -432,10 +424,10 @@ class AtomGraph(object):
                         neighs[ind] = neighs[ind] + copy.copy([x for x in common_neighs if x not in neighs[ind]])
                         ind = m.atoms.index(atomj)
                         neighs[ind] = neighs[ind] + copy.copy([x for x in common_neighs if x not in neighs[ind]])
-                        #for n in common_neighs:
-                        #    ind = m.atoms.index(n)
-                        #    neighs[ind] = neighs[ind] + [x for x in [atomi,atomj] if x not in neighs[ind]]
                         numfound += 1
+        else:
+            interpenetrating = sum(1 for atomi in vp_atoms for atomj in vp_atoms[vp_atoms.index(atomi)+1:] if atomi in atomj.neighs)
+            numfound = interpenetrating
         for i,tf in enumerate(neighs):
             m.atoms[i].neighs = tf
         print('Total number of {0} atoms: {1}'.format(cluster_types,len(vp_atoms),temp))
@@ -557,8 +549,8 @@ def main():
         cluster_model = Model("Orig cluster {0} contains {1} atoms.".format(i,len(cluster)),model.lx, model.ly, model.lz, cluster)
         #for atom in cluster_model.atoms:
         #    if(atom.vp.type in cluster_types): print('  {0}\t{1}'.format(atom,atom.vp.type))
-        cluster_model.write_cif('{1}cluster{0}.cif'.format(i,cluster_prefix))
-        cluster_model.write_our_xyz('{1}cluster{0}.xyz'.format(i,cluster_prefix))
+        cluster_model.write('{1}cluster{0}.cif'.format(i,cluster_prefix))
+        cluster_model.write('{1}cluster{0}.xyz'.format(i,cluster_prefix))
         #for atom in cluster:
         #    print(atom)
    
