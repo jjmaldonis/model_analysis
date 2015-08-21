@@ -193,7 +193,9 @@ def create_basic_models():
 
 def create_randomized_model(num,dir=dir):
     lattice_param = 1
-    perfect = icosahedron(lattice_param,save=False,filename='icosahedron.perfect.xyz')
+    perfect = icosahedron(lattice_param,save=True,filename='icosahedron.perfect.xyz')
+    perfect.write(perfect.filename)
+    return 0
     for i in range(num):
         print(i)
         a = random.uniform(0,360)
@@ -215,7 +217,7 @@ def create_randomized_model(num,dir=dir):
 
 def main():
     #perfect = Model('icosahedron.perfect.xyz')
-    perfect = icosahedron(2.85)
+    perfect = icosahedron(1.0)
     print(perfect)
     #imperfect = Model('icosahedron.imperfect.xyz')
     #create_basic_models()

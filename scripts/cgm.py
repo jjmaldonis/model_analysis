@@ -24,7 +24,8 @@ atom_style	atomic
 read_data temp.dat
 
 pair_style	eam/alloy
-pair_coeff	* * /home/maldonis/bin/ZrCuAl2011.eam.alloy Zr Cu Al
+#pair_coeff	* * /home/maldonis/bin/ZrCuAl2011.eam.alloy Zr Cu Al
+pair_coeff	* * /home/maldonis/bin/Al90Sm10_MendelevM_2014.eam.fs Al Sm
 
 thermo_style	custom step etotal fmax fnorm
 thermo		1
