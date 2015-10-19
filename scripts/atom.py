@@ -20,6 +20,11 @@ class VoronoiPoly(object):
         new.vol = self.vol
         return new
 
+    def __repr__(self):
+        return '<{0}>'.format(','.join(str(x) for x in self.index))
+    def __str__(self):
+        return '<{0}>'.format(','.join(str(x) for x in self.index))
+
 class Atom(object):
     def __init__(self, id, znum, x, y, z):
         super(Atom, self).__init__()
@@ -35,7 +40,10 @@ class Atom(object):
         self.sym = znum2sym.z2sym(self.z) #atomic symbol
 
     def __eq__(self,other):
-        return (self.z == other.z and self.coord == other.coord)
+        x,y,z = [round(xx,6) for xx in self.coord]
+        a,b,c = [round(xx,6) for xx in other.coord]
+        return self.z == other.z and x==a and y==b and z==c
+        #return (self.z == other.z and self.coord == other.coord)
 
     def copy(self):
         new = Atom(self.id, self.z, self.coord[0], self.coord[1], self.coord[2])
@@ -44,13 +52,13 @@ class Atom(object):
         new.cn = self.cn
         return new
 
-    def __eq__(self,item):
-        #if( self.id == item.id and self.z == item.z and self.coord == item.coord):
-        if( self.z == item.z and self.coord == item.coord):
-        #if( self.z == item.z and round(self.coord[0],10) == round(item.coord[0],10) and round(self.coord[1],10) == round(item.coord[1],10) and round(self.coord[2],10) == round(item.coord[2],10)):
-            return True
-        else:
-            return False
+    #def __eq__(self,item):
+    #    #if( self.id == item.id and self.z == item.z and self.coord == item.coord):
+    #    if( self.z == item.z and self.coord == item.coord):
+    #    #if( self.z == item.z and round(self.coord[0],10) == round(item.coord[0],10) and round(self.coord[1],10) == round(item.coord[1],10) and round(self.coord[2],10) == round(item.coord[2],10)):
+    #        return True
+    #    else:
+    #        return False
 
     def __repr__(self):
         #return str(self.id)
