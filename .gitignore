@@ -1,5 +1,7 @@
-temp_stat.out.new
-*temp*
-*.sorted
+*.pyc
 *.xyz*
-model_update_9933_50000_categorized.txt
+*.dat*
+*.cif*
+rings/
+cluster*.cif
+working/

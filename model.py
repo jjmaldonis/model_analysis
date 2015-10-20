@@ -13,6 +13,21 @@ import math
 import masses
 from collections import defaultdict
 
+
+""" Add these functions into Model:
+def crop(m,xstart,xend,ystart,yend,zstart,zend):
+    atoms = []
+    for atom in m.atoms:
+        if( xstart < atom.coord[0] < xend and
+            ystart < atom.coord[1] < yend and
+            zstart < atom.coord[2] < zend):
+            atoms.append(atom)
+    newm = Model('cropped model',2*abs(xend)+2*abs(xstart),2*abs(yend)+2*abs(ystart),2*abs(zend)+2*abs(zstart),atoms)
+    return newm
+"""
+
+
+
 def drange(start, stop, step):
     r = start
     while r < stop:
