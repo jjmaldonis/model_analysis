@@ -19,11 +19,11 @@ class Hutch(object):
     def __init__(self, model=None):
         if model is None:
             raise Exception("No input model was given to Hutch().")
-        if(model.lx != model.ly != model.lz):
+        if(model.xsize != model.ysize != model.zsize):
             raise Exception("The model must be a cube!")
         self.model = model # Keep a pointer to the parent model
         self.nhutchs = max(int(round(model.natoms**(1.0/3.0))),1)
-        self.hutchsize = self.model.lx/self.nhutchs
+        self.hutchsize = self.model.xsize/self.nhutchs
         # Create hutch dictionary
         self.hutchs = {}
         for i in range(0,self.nhutchs):
@@ -36,14 +36,14 @@ class Hutch(object):
         self.check_hutches(model)
 
     @property
-    def lx(self):
-        return self.model.lx
+    def xsize(self):
+        return self.model.xsize
     @property
-    def ly(self):
-        return self.model.ly
+    def ysize(self):
+        return self.model.ysize
     @property
-    def lz(self):
-        return self.model.lz
+    def zsize(self):
+        return self.model.zsize
 
     def check_hutches(self,model):
         for atom in model.atoms:
@@ -58,12 +58,12 @@ class Hutch(object):
 
     def _get_hutch(self,atom):
         """ Returns the hutch that the atom should be located in using a tuple """
-        #x = int(round( (atom.coord[0] + 0.5*self.lx) / self.hutchsize)) % self.nhutchs
-        #y = int(round( (atom.coord[1] + 0.5*self.ly) / self.hutchsize)) % self.nhutchs
-        #z = int(round( (atom.coord[2] + 0.5*self.lz) / self.hutchsize)) % self.nhutchs
-        x = int(floor( (atom.coord[0] + 0.5*self.lx) / self.hutchsize)) % self.nhutchs
-        y = int(floor( (atom.coord[1] + 0.5*self.ly) / self.hutchsize)) % self.nhutchs
-        z = int(floor( (atom.coord[2] + 0.5*self.lz) / self.hutchsize)) % self.nhutchs
+        #x = int(round( (atom.coord[0] + 0.5*self.xsize) / self.hutchsize)) % self.nhutchs
+        #y = int(round( (atom.coord[1] + 0.5*self.ysize) / self.hutchsize)) % self.nhutchs
+        #z = int(round( (atom.coord[2] + 0.5*self.zsize) / self.hutchsize)) % self.nhutchs
+        x = int(floor( (atom.coord[0] + 0.5*self.xsize) / self.hutchsize)) % self.nhutchs
+        y = int(floor( (atom.coord[1] + 0.5*self.ysize) / self.hutchsize)) % self.nhutchs
+        z = int(floor( (atom.coord[2] + 0.5*self.zsize) / self.hutchsize)) % self.nhutchs
         return (x,y,z)
 
     def add_atom(self,atom):
@@ -94,9 +94,9 @@ class Hutch(object):
             r2 = defaultdict(lambda: radius**2)
             cutoff = defaultdict(lambda: cutoff)
         x,y,z = theatom.coord
-        hx = (x + self.lx*0.5) /self.hutchsize
-        hy = (y + self.ly*0.5) /self.hutchsize
-        hz = (z + self.lz*0.5) /self.hutchsize
+        hx = (x + self.xsize*0.5) /self.hutchsize
+        hy = (y + self.ysize*0.5) /self.hutchsize
+        hz = (z + self.zsize*0.5) /self.hutchsize
         hr = radius/self.hutchsize
         lhx = floor(hx-hr)
         lhy = floor(hy-hr)
@@ -112,7 +112,6 @@ class Hutch(object):
         return atoms
 
 def main():
-    from refactored_model import Model
     model = Model(sys.argv[1])
     #hutch = Hutch(model)
     hutch = model.hutch

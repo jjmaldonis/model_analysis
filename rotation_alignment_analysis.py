@@ -6,35 +6,12 @@ from model import Model
 from atom import Atom
 #from voronoi_3d import calculate_atom
 import voronoi_3d as VT
-from recenter_model import recenter_model
-from nearest_atoms import find_center_atom
 import matplotlib
 if sys.platform == 'darwin': matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from tabulate import tabulate
 from collections import defaultdict, Counter
-
-
-def rescale_bond_distances(m, distance):
-    # TODO: Move this and its helper functions into the Model class
-    """ Rescales a cluster (in for form of a Model) so that the average bond length is distance """
-    center = find_center_atom(m)
-    for atom in m.atoms:
-        atom.coord = (atom.coord[0]-center.coord[0], atom.coord[1]-center.coord[1], atom.coord[2]-center.coord[2])
-
-    avg = 0.
-    for atom in m.atoms:
-        if atom.id != center.id:
-            avg += m.dist(center, atom)
-    avg /= (m.natoms-1)
-    for atom in m.atoms:
-        if atom.id != center.id:
-            atom.coord = (atom.coord[0]/avg*distance, atom.coord[1]/avg*distance, atom.coord[2]/avg*distance)
-    recenter_model(m)
-    m.lx *= distance
-    m.ly *= distance
-    m.lz *= distance
-    return avg 
+HOME = os.environ['HOME']
 
 
 def cart2sph(x,y,z):
@@ -50,7 +27,7 @@ def cart2sph(x,y,z):
 
 
 class Group(object):
-    """ This object is designed to hold a group of Clusters and includes functions to perform operations on that group as a whole. """
+    """ This object is designed to hold a group of AlignedData's and includes functions to perform operations on that group as a whole. """
     def __init__(self, clusters, comment=None):
         if not isinstance(clusters, list) or isinstance(clusters, np.ndarray):
             raise Exception("The clusters need to be contained in an ordered list so that the 'successful' mask can be applied correctly.")
@@ -100,26 +77,22 @@ class Group(object):
                 try:
                     avg_coords[i][0] += atom.coord[0]/nsuccessful
                 except:
-                    print(i)
-                    print(len(cluster.aligned_target))
-                    print(cluster.natoms)
-                    print(cluster.successful)
                     avg_coords[i][0] += atom.coord[0]/nsuccessful
                 avg_coords[i][1] += atom.coord[1]/nsuccessful
                 avg_coords[i][2] += atom.coord[2]/nsuccessful
 
-        m = Model('averaged structure', 5.,5.,5., [Atom(i, 'Si', *coord) for i,coord in enumerate(avg_coords)])
+        m = Cluster(center_included=False, comment='averaged structure', xsize=5.,ysize=5.,zsize=5., atoms=[Atom(i, 'Si', *coord) for i,coord in enumerate(avg_coords)])
         m.add(Atom(m.natoms, 'Si', *[0., 0., 0.])) # Add a center atom at (0,0,0)
         m.center = m.atoms[-1]
         m.center.neighs = m.atoms[:-1]
-        #rescale_bond_distances(m, 3.5)
+        #m.rescale_bond_distances(3.5)
         VT.calculate_atom(m, atom=m.center, cutoff=max(m.dist(m.atoms[-1],atom) for atom in m.atoms[:-1])+0.1) #VP calculation
         #print("  Center atom's VP index is {0}".format(m.center.vp))
         return m
 
     def combine(self):
         """ Combines the group of aligned clusters into a single model. """
-        m = Model('combined structures', 5.,5.,5., [])
+        m = Model(comment='combined structures', xsize=5.,ysize=5.,zsize=5., atoms=[])
         count = 0
         for i,cluster in enumerate(self.clusters):
             if not cluster.successful: continue
@@ -165,7 +138,7 @@ class Group(object):
 
 
 
-class Cluster(object):
+class AlignedData(object):
     """ This object takes in the data from the alignment procedure and provides functions to operate on that data. """
     def __init__(self, data, comment=None):
         # Add a center atom to self.model, self.target, and self.aligned_target at (0,0,0)
@@ -173,15 +146,12 @@ class Cluster(object):
         self.scale_factor = None
         if data.ind is not None:
             self.successful = True
-            #self.model = Model('data.model', 5.,5.,5., [Atom(i, 'Si', *coord) for i,coord in enumerate(data.model)] + [Atom(len(data.model), 'Si', *[0., 0., 0.])])
-            self.model = Model('data.model', 5.,5.,5., [Atom(i, 'Si', *coord) for i,coord in enumerate(data.model)])
-            #self.target = Model('data.target', 5.,5.,5., [Atom(i, 'Si', *coord) for i,coord in enumerate(data.target)] + [Atom(len(data.target), 'Si', *[0., 0., 0.])])
-            self.target = Model('data.target', 5.,5.,5., [Atom(i, 'Si', *coord) for i,coord in enumerate(data.target)])
+            self.model = Cluster(center_included=False, comment='data.model', xsize=5.,ysize=5.,zsize=5., atoms=[Atom(i, 'Si', *coord) for i,coord in enumerate(data.model)])
+            self.target = Cluster(center_included=False, comment='data.target', xsize=5.,ysize=5.,zsize=5., atoms=[Atom(i, 'Si', *coord) for i,coord in enumerate(data.target)])
             self.order = data.ind[0]
             self.rotation = data.transformation_R
             self.translation = data.transformation_t
-            #self.aligned_target = Model('data.aligned_target', 5.,5.,5., [Atom(i, 'Si', *coord) for i,coord in enumerate(data.aligned_target)] + [Atom(len(data.aligned_target), 'Si', *[0., 0., 0.])])
-            self.aligned_target = Model('data.aligned_target', 5.,5.,5., [Atom(i, 'Si', *coord) for i,coord in enumerate(data.aligned_target)])
+            self.aligned_target = Cluster(center_included=False, comment='data.aligned_target', xsize=5.,ysize=5.,zsize=5., atoms=[Atom(i, 'Si', *coord) for i,coord in enumerate(data.aligned_target)])
             self.error = data.error # L1-norm
         else:
             self.successful = False
@@ -191,6 +161,86 @@ class Cluster(object):
     @property
     def natoms(self):
         return self.model.natoms # Or target? or ind? What happens when the target and model do not have the same number of atoms?
+
+
+
+class Cluster(Model):
+    """ An extension of Model that defines helper functions for small clusters. """
+    def __init__(self, center_included=True, **kwargs):
+        super(Cluster, self).__init__(**kwargs) # Send input args to Model constructor
+        if center_included:
+            # Remove the center atom and put it on the end (if it isn't already there)
+            center = self.find_center_atom()
+            if center != self.atoms[-1]:
+                self.remove(center)
+                self.add(center)
+
+    def fix_cluster_pbcs(self):
+        # First recenter to first octant
+        self.recenter()
+        meanx, meany, meanz = self.lx/4.0, self.ly/4.0, self.lz/4.0
+        for atom in self.atoms[1:]:
+            atom.coord = (atom.coord[0]+meanx-self.atoms[0].coord[0], atom.coord[1]+meany-self.atoms[0].coord[1], atom.coord[2]+meanz-self.atoms[0].coord[2])
+        self.atoms[0].coord = (self.atoms[0].coord[0]+meanx-self.atoms[0].coord[0], self.atoms[0].coord[1]+meany-self.atoms[0].coord[1], self.atoms[0].coord[2]+meanz-self.atoms[0].coord[2])
+
+        # See if we need to fix
+        fix = False
+        for atom in self.atoms[1:]:
+            if round(self.dist(self.atoms[0], atom)) != round(self.dist(self.atoms[0], atom, pbc=False)):
+                fix = True
+                break
+        else:
+            self.recenter()
+            return m
+        # If so, fix
+        for atom in self.atoms:
+            new = []
+            if round(self.dist(self.atoms[0], atom)) != round(self.dist(self.atoms[0], atom, pbc=False)):
+                for c in atom.coord:
+                    if c < 0:
+                        new.append(c+self.lx)
+                    elif c > self.lx:
+                        new.append(c-self.lx)
+                    else:
+                        new.append(c)
+                atom.coord = tuple(new)
+        self.recenter()
+        return m
+
+    def rescale_bond_distances(self, avg):
+        """ Rescales a cluster so that the average bond length is 'avg' """
+        center = self.find_center_atom()
+
+        # Place the center atom at (0,0,0) and move every other atom relative to that translation
+        for atom in self.atoms:
+            atom.coord = (atom.coord[0]-center.coord[0], atom.coord[1]-center.coord[1], atom.coord[2]-center.coord[2])
+
+        current_avg = 0.
+        for atom in self.atoms:
+            if atom != center:
+                current_avg += self.dist(center, atom)
+        current_avg /= (self.natoms-1)
+        for atom in self.atoms:
+            if atom.id != center.id:
+                atom.coord = (atom.coord[0]/current_avg*avg, atom.coord[1]/current_avg*avg, atom.coord[2]/current_avg*avg)
+        recenter_model(m)
+        return avg/current_avg
+
+    def normalize_bond_distances(self):
+        return self.rescale_bond_distances(avg=1.0)
+
+    def find_center_atom(self):
+        """ Returns the index of the center atom in self.atoms. """
+        return sorted([(atom.coord[0]**2 + atom.coord[1]**2 + atom.coord[2]**2, atom) for atom in self.atoms])[0][1]
+
+    def find_closest(self, atom):
+        """ Returns the index of the closest atom to 'atom' in self.atoms. """
+        return sorted([((atom.coord[0]-atom2.coord[0])**2 + (atom.coord[1]-atom2.coord[1])**2 + (atom.coord[2]-atom2.coord[2])**2, atom2) for atom2 in self.atoms])[0][1]
+        
+    def closest_list(self, atom):
+        """ Returns a sorted list of (dist**2, atom) of the closest atoms to 'atom' in self.atoms. """
+        return sorted([((atom.coord[0]-atom2.coord[0])**2 + (atom.coord[1]-atom2.coord[1])**2 + (atom.coord[2]-atom2.coord[2])**2, atom2) for atom2 in self.atoms])
+
 
 
 class Aligned_data:
@@ -226,7 +276,6 @@ def load_pkl(filename):
         o.close()
     return data
 
-
 def load_vp(filename, start=0):
     content = open(filename, 'r').readlines()
     for i,line in enumerate(reversed(content)):
@@ -256,15 +305,15 @@ def main():
     #pkl_files = ['./pkls/001200000/001200000-icos.pkl']
     #pkl_files = ['./pkls/04440000/04440000-icos.pkl']
 
-    VP = load_vp('vp.txt', start=2)
+    VP = load_vp(HOME+'/working/Arash_uploads/vp.txt', start=2)
     #pkl_files = ['./pkls/' + ''.join([str(x) for x in vp]) + '/' + ''.join([str(x) for x in vp]) + '-icos.pkl' for vp in VP]
     #pkl_files = ['./pkls/' + ''.join([str(x) for x in vp]) + '/' + ''.join([str(x) for x in vp]) + '-less_than_12.pkl' for vp in VP]
     pkl_files =[]
     for vp in VP:
         if sum(vp) < 12:
-            f = './pkls/' + ''.join([str(x) for x in vp]) + '/' + ''.join([str(x) for x in vp]) + '-less_than_12.pkl'
+            f = HOME+'/working/Arash_uploads/pkls/' + ''.join([str(x) for x in vp]) + '/' + ''.join([str(x) for x in vp]) + '-less_than_12.pkl'
         else:
-            f = './pkls_bak/' + ''.join([str(x) for x in vp]) + '/' + ''.join([str(x) for x in vp]) + '-icos.pkl'
+            f = HOME+'/working/Arash_uploads/pkls_bak/' + ''.join([str(x) for x in vp]) + '/' + ''.join([str(x) for x in vp]) + '-icos.pkl'
         pkl_files.append(f)
 
     #pkl_files = [os.path.join(root, name) for root, dirs, files in os.walk('./pkls/') for name in files if '.pkl' in name]
@@ -275,8 +324,8 @@ def main():
     #    #if sum(VP[f]) >= 12: continue
     #    aligned = load_pkl(pkl_file)
     #    print("Finished loading data pkl file {0}.".format(pkl_file))
-    #    #g = Group([Cluster(a) for a in aligned], comment = ''.join([str(x) for x in VP[f]]))
-    #    g = Group([Cluster(a) for a in aligned])
+    #    #g = Group([AlignedData(a) for a in aligned], comment = ''.join([str(x) for x in VP[f]]))
+    #    g = Group([AlignedData(a) for a in aligned])
     #    for cluster in g.clusters:
     #        if cluster.successful and cluster.error > 0.15:
     #            #d[cluster.natoms] += 1
@@ -293,7 +342,7 @@ def main():
     for f,pkl_file in enumerate(pkl_files):
         aligned = load_pkl(pkl_file)
         print("Finished loading data pkl file {0}.".format(pkl_file))
-        g = Group([Cluster(a) for a in aligned], comment = ''.join([str(x) for x in VP[f]]))
+        g = Group([AlignedData(a) for a in aligned], comment = ''.join([str(x) for x in VP[f]]))
         groups.append(g)
 
         for cluster in g.clusters:
@@ -345,6 +394,7 @@ def main():
 
 
 
+    # THIS IS OLD CODE but I haven't decided whether I want to make it or part of it into a helper function or not
     pkl_files = [os.path.join(root, name) for root, dirs, files in os.walk('.') for name in files if '.pkl' in name]
     aligned_files = sorted([(pkl, load_pkl(pkl)) for pkl in pkl_files], key=lambda tup: len(tup[1]))
     print("Finished unpacking pickles.")

@@ -178,7 +178,7 @@ class VPStatistics(object):
 def print_all(m):
     """ Prints the index and type of each atom in m """
     for atom in m.atoms:
-        print("{0} {1} {2}".format(atom,atom.vp.index,atom.vp.type))
+        print("{0} {1} {2}".format(atom, atom.vp.index, atom.vp.type))
 
 def save_vp_cluster_with_index(m,index):
     """ Index should be a 4-list, e.g. [0,0,12,0].
@@ -192,15 +192,9 @@ def save_vp_cluster_with_index(m,index):
             print("Saved VP cluster to modelfile temp{0}.cif".format(atom.id))
 
 
-def dist(atom1,atom2):
-    x = (atom1.coord[0] - atom2.coord[0])
-    y = (atom1.coord[1] - atom2.coord[1])
-    z = (atom1.coord[2] - atom2.coord[2])
-    return math.sqrt(x**2+y**2+z**2)
-
 def fix_cluster_pbcs(m):
     # First recenter to first octant
-    recenter_model(m)
+    m.recenter()
     meanx, meany, meanz = m.lx/4.0, m.ly/4.0, m.lz/4.0
     for atom in m.atoms[1:]:
         atom.coord = (atom.coord[0]+meanx-m.atoms[0].coord[0], atom.coord[1]+meany-m.atoms[0].coord[1], atom.coord[2]+meanz-m.atoms[0].coord[2])
@@ -209,16 +203,16 @@ def fix_cluster_pbcs(m):
     # See if we need to fix
     fix = False
     for atom in m.atoms[1:]:
-        if round(m.dist(m.atoms[0], atom)) != round(dist(m.atoms[0], atom)):
+        if round(m.dist(m.atoms[0], atom)) != round(m.dist(m.atoms[0], atom, pbc=False)):
             fix = True
             break
     else:
-        recenter_model(m)
+        m.recenter()
         return m
     # If so, fix
     for atom in m.atoms:
         new = []
-        if round(m.dist(m.atoms[0], atom)) != round(dist(m.atoms[0], atom)):
+        if round(m.dist(m.atoms[0], atom)) != round(m.dist(m.atoms[0], atom, pbc=False)):
             for c in atom.coord:
                 if c < 0:
                     new.append(c+m.lx)
@@ -226,8 +220,8 @@ def fix_cluster_pbcs(m):
                     new.append(c-m.lx)
                 else:
                     new.append(c)
-            atom.coord = copy.copy(new)
-    recenter_model(m)
+            atom.coord = tuple(new)
+    m.recenter()
     return m
 
 def normalize_bond_distances(m):
@@ -255,31 +249,7 @@ def main():
     paramfile = sys.argv[1]
     modelfiles = sys.argv[2:]
 
-    cutoff = {}
-    cutoff[(40,40)] = 3.6
-    cutoff[(13,29)] = 3.6
-    cutoff[(29,13)] = 3.6
-    cutoff[(40,13)] = 3.6
-    cutoff[(13,40)] = 3.6
-    cutoff[(29,40)] = 3.6
-    cutoff[(40,29)] = 3.6
-    cutoff[(13,13)] = 3.6
-    cutoff[(29,29)] = 3.6
-
-    cutoff[(41,41)] = 3.7
-    cutoff[(28,28)] = 3.7
-    cutoff[(41,28)] = 3.7
-    cutoff[(28,41)] = 3.7
-
-    cutoff[(46,46)] = 3.45
-    cutoff[(14,14)] = 3.45
-    cutoff[(46,14)] = 3.45
-    cutoff[(14,46)] = 3.45
-
-    cutoff[(13,13)] = 3.8
-    cutoff[(62,62)] = 3.8
-    cutoff[(13,62)] = 3.8
-    cutoff[(62,13)] = 3.8
+    from cutoff import cutoff
 
     vp_dict = load_param_file(paramfile)
 

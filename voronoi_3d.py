@@ -14,16 +14,16 @@ class MyError(Exception):
 
 def frac(atom,model):
     # Returns the coordinate of atom in fractional coordinates between 0 and 1
-    return (atom.coord[0]/model.lx+0.5, atom.coord[1]/model.ly+0.5, atom.coord[2]/model.lz+0.5)
+    return (atom.coord[0]/model.xsize+0.5, atom.coord[1]/model.ysize+0.5, atom.coord[2]/model.zsize+0.5)
 
 def voronoi_3d(model,cutoff):
     atol = 0.03
     tol = 0.03
     tltol = 0.03
-    vp_analysis(model,cutoff,tol,atol,tltol)
+    vp_anaysizesis(model,cutoff,tol,atol,tltol)
 
 
-def vp_analysis(model,cutoff,tol,atol,tltol):
+def vp_anaysizesis(model,cutoff,tol,atol,tltol):
     atom_vol = np.zeros(model.natoms)
     # model.atomtypes has integer keys, not stings
     print_percent = 0.0
@@ -33,7 +33,7 @@ def vp_analysis(model,cutoff,tol,atol,tltol):
             print("{0}% done...".format(print_percent))
             print_percent += 10.0
         calculate_atom(model, atomi, cutoff, atol=atol, tol=tol, tltol=tltol)
-    print("percentages of volume counted: {0}".format(sum(atomi.vp.vol/(model.lx*model.ly*model.lz) for atomi in model.atoms)))
+    print("percentages of volume counted: {0}".format(sum(atomi.vp.vol/(model.xsize*model.ysize*model.zsize) for atomi in model.atoms)))
 
 
 def calculate_atom(model, atom, cutoff, atol=0.03, tol=0.03, tltol=0.03):
@@ -46,17 +46,17 @@ def calculate_atom(model, atom, cutoff, atol=0.03, tol=0.03, tltol=0.03):
     mtag = []
     for j,atomj in enumerate(atom.neighs):
         #if(i == j): continue
-        rxij = atomj.coord[0]/model.lx - atom.coord[0]/model.lx
-        ryij = atomj.coord[1]/model.ly - atom.coord[1]/model.ly
-        rzij = atomj.coord[2]/model.lz - atom.coord[2]/model.lz
+        rxij = atomj.coord[0]/model.xsize - atom.coord[0]/model.xsize
+        ryij = atomj.coord[1]/model.ysize - atom.coord[1]/model.ysize
+        rzij = atomj.coord[2]/model.zsize - atom.coord[2]/model.zsize
         rxij = rxij - round(rxij) #PBCs
         ryij = ryij - round(ryij)
         rzij = rzij - round(rzij)
-        # These four lines implement weighted voronoi analysis
+        # These four lines implement weighted voronoi anaysizesis
         ratio = 2*weight_sp[atom.z]/(weight_sp[atom.z]+weight_sp[atomj.z])
-        rxij=rxij*ratio*model.lx
-        ryij=ryij*ratio*model.ly
-        rzij=rzij*ratio*model.lz
+        rxij=rxij*ratio*model.xsize
+        ryij=ryij*ratio*model.ysize
+        rzij=rzij*ratio*model.zsize
         rijsq = rxij**2 + ryij**2 + rzij**2
         # Select all atoms within cutoff of atom, cutoff is based on species
         try:
@@ -93,7 +93,7 @@ def calculate_atom(model, atom, cutoff, atol=0.03, tol=0.03, tltol=0.03):
         mtag = []
 
     if(good):
-        # Do the area calculation, which currently doesnt work.
+        # Do the area calculation, which currentysize doesnt work.
         # This could be a problem TODO
         # Sort vertices ring in faces and calculate edge length and face are (???)
         tarea = 0.0
