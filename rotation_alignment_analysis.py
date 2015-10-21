@@ -140,7 +140,7 @@ class Group(object):
 
 class AlignedData(object):
     """ This object takes in the data from the alignment procedure and provides functions to operate on that data. """
-    def __init__(self, data, comment=None):
+    def __init__(self, data, reorder=False, comment=None):
         # Add a center atom to self.model, self.target, and self.aligned_target at (0,0,0)
         self.comment = comment
         self.scale_factor = None
@@ -151,7 +151,12 @@ class AlignedData(object):
             self.order = data.ind[0]
             self.rotation = data.transformation_R
             self.translation = data.transformation_t
-            self.aligned_target = Cluster(center_included=False, comment='data.aligned_target', xsize=5.,ysize=5.,zsize=5., atoms=[Atom(i, 'Si', *coord) for i,coord in enumerate(data.aligned_target)])
+
+            if not reorder:
+                self.aligned_target = Cluster(center_included=False, comment='data.aligned_target', xsize=5.,ysize=5.,zsize=5., atoms=[Atom(i, 'Si', *coord) for i,coord in enumerate(data.aligned_target)])
+            else:
+                self.aligned_target = Cluster(center_included=False, comment='data.aligned_target', xsize=5.,ysize=5.,zsize=5., atoms=[Atom(i, 'Si', *coord) for i,coord in enumerate([data.aligned_target[i-1] for i in self.order])])
+
             self.error = data.error # L1-norm
         else:
             self.successful = False
@@ -310,10 +315,7 @@ def main():
     #pkl_files = ['./pkls/' + ''.join([str(x) for x in vp]) + '/' + ''.join([str(x) for x in vp]) + '-less_than_12.pkl' for vp in VP]
     pkl_files =[]
     for vp in VP:
-        if sum(vp) < 12:
-            f = HOME+'/working/Arash_uploads/pkls/' + ''.join([str(x) for x in vp]) + '/' + ''.join([str(x) for x in vp]) + '-less_than_12.pkl'
-        else:
-            f = HOME+'/working/Arash_uploads/pkls_bak/' + ''.join([str(x) for x in vp]) + '/' + ''.join([str(x) for x in vp]) + '-icos.pkl'
+        f = HOME+'/working/Arash_uploads/pkls/' + ''.join([str(x) for x in vp]) + '/' + ''.join([str(x) for x in vp]) + '-icos.pkl'
         pkl_files.append(f)
 
     #pkl_files = [os.path.join(root, name) for root, dirs, files in os.walk('./pkls/') for name in files if '.pkl' in name]
@@ -340,9 +342,10 @@ def main():
     table = {"Name":[], "Mean Error":[], "VP":[], "Number of clusters":[], "Stdev":[], "Large":[], "Small":[]}
     groups = []
     for f,pkl_file in enumerate(pkl_files):
+        #if '03620' not in pkl_file: continue # I was using this and reorder=True below) to try to figure out how to calculate the correct average structure for clusters with 12 or less atoms
         aligned = load_pkl(pkl_file)
         print("Finished loading data pkl file {0}.".format(pkl_file))
-        g = Group([AlignedData(a) for a in aligned], comment = ''.join([str(x) for x in VP[f]]))
+        g = Group([AlignedData(a, reorder=False) for a in aligned], comment = ''.join([str(x) for x in VP[f]]))
         groups.append(g)
 
         for cluster in g.clusters:
@@ -358,6 +361,7 @@ def main():
         avg = g.average_structure()
         head, tail = os.path.split(pkl_file)
         avg.write(tail[:-4] + '.xyz')
+        print("  Saved average structure to {0}".format(tail[:-4] + '.xyz'))
         try:
             print("  VP of average structure: {0}".format(avg.center.vp))
             table["VP"].append(avg.center.vp)

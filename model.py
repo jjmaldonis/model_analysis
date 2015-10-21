@@ -197,11 +197,11 @@ class Model(object):
 
     def write(self, outfile=None, ext=None):
         if(outfile is not None and ext is None): _,ext = os.path.splitext(outfile)
-        elif(ext is None): ext = 'xyz'
-        if(ext == 'xyz'):   self._write_xyz(outfile)
-        elif(ext == 'dat'): self._write_dat(outfile)
-        elif(ext == 'cif'): self._write_cif(outfile)
-        return None
+        elif(ext is None): ext = '.xyz'
+        if(ext == '.xyz' or 'xyz'):   self._write_xyz(outfile)
+        elif(ext == '.dat' or 'dat'): self._write_dat(outfile)
+        elif(ext == '.cif' or 'cif'): self._write_cif(outfile)
+        return ''
 
     def _write_dat(self, outfile=None):
         if outfile is None: of = sys.stdout
@@ -229,7 +229,7 @@ class Model(object):
         of.write(str(self.natoms)+'\n')
         of.write("{1} {2} {3} {0}\n".format(self.comment.strip(),self.xsize, self.xsize, self.zsize))
         for i,atom in enumerate(self.atoms):
-            of.write(atom.reaxsizeyz()+'\n')
+            of.write(atom.realxyz()+'\n')
 
     def _write_cif(self, outfile=None):
         if outfile is None: of = sys.stdout
