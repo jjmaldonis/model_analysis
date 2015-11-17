@@ -123,12 +123,12 @@ class Model(object):
 
     def _load(self):
         filename, ext = os.path.splitext(self.filename)
-        if(ext == 'xyz'):
+        if(ext == 'xyz' or ext == '.xyz'):
             self._load_xyz()
-        elif(ext == 'dat'):
+        elif(ext == 'dat' or ext == '.dat'):
             self._load_dat()
         else:
-            raise Exception("Unknown input model type! File {0} has extension {1}".format(modelfile,ext))
+            raise Exception("Unknown input model type! File {0} has extension {1}".format(self.filename,ext))
 
     def _load_xyz(self):
         modelfile = self.filename
@@ -515,7 +515,7 @@ class Model(object):
         zcenter = zmin + (zmax - zmin)/2.0
         if(debug):
             print("Center was at ({0},{1},{2})".format(xcenter,ycenter,zcenter))
-        for i in range(m.natoms):
+        for i in range(self.natoms):
             self.atoms[i].coord = ( self.atoms[i].coord[0] - xcenter, self.atoms[i].coord[1] - ycenter, self.atoms[i].coord[2] - zcenter )
         if(debug):
             xmin = min(atom.coord[0] for atom in self.atoms)
