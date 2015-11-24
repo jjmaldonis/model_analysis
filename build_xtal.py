@@ -1,114 +1,47 @@
 import sys
+from model import Model
+from atom import Atom
 
 
-def simple_cubic():
-    a = 2.50 # Lattice parameter in A
-    world_min = -a*2
-    world_max = a*2
+def create_model(translation_vectors, comment, lattice_parameter, units=1, atom_type='Si', filename=None):
+    a = lattice_parameter
+    eps = 1e-6
     points = []
-    for x in range(int(world_min/a),int(world_max/a)):
-        for y in range(int(world_min/a),int(world_max/a)):
-            for z in range(int(world_min/a),int(world_max/a)):
-                points.append( (x*a, y*a, z*a) )
-    #print(points)
+    for x in range(units+1):
+        for y in range(units+1):
+            for z in range(units+1):
+                for tv in translation_vectors:
+                    point = ( (tv[0]+x)*a, (tv[1]+y)*a, (tv[2]+z)*a )
+                    if point[0] <= units*a+eps and point[1] <= units*a+eps and point[2] <= units*a+eps:
+                        points.append(point)
 
-    f = open('sc.xyz', 'w')
-    f.write('Comment: Simple Cubic Al Lattice\n')
-    f.write(str(world_max*2) + '\t' + str(world_max*2) + '\t' + str(world_max*2) + '\n')
-    for i in range(0,len(points)):
-        line = ""
-        for item in points[i]:
-            line = line + '\t' + str(item)
-        line = '13\t' + line.strip() + '\n' # Get rid of leading tab and add endline and call the atom Al
-        f.write(line)
-    f.write('-1')
-    f.close()
+    atoms = [Atom(i, atom_type, x,y,z) for i,(x,y,z) in enumerate(points)]
+    m = Model(comment=comment, xsize=units*a, ysize=units*a, zsize=units*a, atoms=atoms)
+    m.recenter()
+    return m
 
-def fcc():
-    a = 3.52 # Lattice parameter in A
-    world_min = -3*a
-    world_max = 4*a
-    points = []
-    for x in range(int(round(world_min/a)),int(round(world_max/a))):
-        for y in range(int(round(world_min/a)),int(round(world_max/a))):
-            for z in range(int(round(world_min/a)),int(round(world_max/a))):
-                points.append( (x*a, y*a, z*a) )
-                points.append( ((0.5+x)*a, (0.5+y)*a, z*a) )
-                points.append( ((0.5+x)*a, y*a, (0.5+z)*a) )
-                points.append( (x*a, (0.5+y)*a, (0.5+z)*a) )
+def simple_cubic(lattice_parameter, units=1, atom_type='Si', filename=None):
+    comment = 'Simple cubic lattice'
+    translation_vectors = [(0.0, 0.0, 0.0)]
+    return create_model(translation_vectors=translation_vectors, comment=comment, lattice_parameter=lattice_parameter, units=units, atom_type=atom_type, filename=filename)
 
-    #print(len(points))
-    #print(points)
+def fcc(lattice_parameter, units=1, atom_type='Si', filename=None):
+    comment = 'FCC lattice'
+    translation_vectors = [(0.0, 0.0, 0.0), (0.5, 0.5, 0.0), (0.5, 0.0, 0.5), (0.0, 0.5, 0.5)]
+    return create_model(translation_vectors=translation_vectors, comment=comment, lattice_parameter=lattice_parameter, units=units, atom_type=atom_type, filename=filename)
 
-    f = open('fcc3.xyz', 'w')
-    f.write('Comment: FCC Lattice\n')
-    f.write(str(world_max) + '\t' + str(world_max) + '\t' + str(world_max) + '\n')
-    for i in range(0,len(points)):
-        line = ""
-        for item in points[i]:
-            line = line + '\t' + str(item)
-        line = '28\t' + line.strip() + '\n' # Get rid of leading tab and add endline and call the atom Al
-        f.write(line)
-    f.write('-1')
-    f.close()
-
-def bcc():
-    a = 3.3  # Lattice parameter in A
-    world_min = 0*a
-    world_max = 3*a
-    points = []
-    for x in range(int(round(world_min/a)),int(round(world_max/a))):
-        for y in range(int(round(world_min/a)),int(round(world_max/a))):
-            for z in range(int(round(world_min/a)),int(round(world_max/a))):
-                points.append( (x*a, y*a, z*a) )
-                points.append( ((0.5+x)*a, (0.5+y)*a, (0.5+z)*a) )
-
-    #print(len(points))
-    #print(points)
-
-    f = open('bcc2.xyz', 'w')
-    f.write('Comment: BCC Lattice\n')
-    f.write(str(world_max) + '\t' + str(world_max) + '\t' + str(world_max) + '\n')
-    for i in range(0,len(points)):
-        line = ""
-        for item in points[i]:
-            line = line + '\t' + str(item)
-        line = '41\t' + line.strip() + '\n' # Get rid of leading tab and add endline and call the atom Al
-        f.write(line)
-    f.write('-1')
-    f.close()
-    
-def bcc():
-    a = 2.5 # Lattice parameter in A
-    world_min = -2*a
-    world_max = 2*a
-    points = []
-    for x in range(int(round(world_min/a)),int(round(world_max/a))):
-        for y in range(int(round(world_min/a)),int(round(world_max/a))):
-            for z in range(int(round(world_min/a)),int(round(world_max/a))):
-                points.append( (x*a, y*a, z*a) )
-                points.append( ((0.5+x)*a, (0.5+y)*a, (0.5+z)*a) )
-    print(len(points))
-    print(points)
-
-    f = open('bcc.xyz', 'w')
-    f.write('Comment: BCC Lattice\n')
-    f.write(str(world_max) + '\t' + str(world_max) + '\t' + str(world_max) + '\n')
-    for i in range(0,len(points)):
-        line = ""
-        for item in points[i]:
-            line = line + '\t' + str(item)
-        line = '13\t' + line.strip() + '\n' # Get rid of leading tab and add endline and call the atom Al
-        f.write(line)
-    f.write('-1')
-    f.close()
-
+def bcc(lattice_parameter, units=1, atom_type='Si', filename=None):
+    comment = 'BCC lattice'
+    translation_vectors = [(0.0, 0.0, 0.0), (0.5, 0.5, 0.5)]
+    return create_model(translation_vectors=translation_vectors, comment=comment, lattice_parameter=lattice_parameter, units=units, atom_type=atom_type, filename=filename)
 
 
 def main():
-    #simple_cubic()
-    fcc()
-    bcc()
+    m = simple_cubic(4.050, units=2)
+    m = fcc(4.050, units=2)
+    m = bcc(4.050, units=2)
+
+    m.save()
 
 if __name__ == '__main__':
     main()
