@@ -54,6 +54,11 @@ class Group(object):
     def successful(self):
         """ A mask to operate only on successfully aligned clusters. """
         return np.array([cluster.successful for cluster in self.clusters])
+    
+    @property
+    def nsuccessful(self):
+        """ Returns the number of successfully aligned clusters in this Group. """
+        return sum(self.successful)
 
     @property
     def coordinates(self):
@@ -74,10 +79,7 @@ class Group(object):
             # The order of atoms in aligned_targets is the same for every target so we don't need to reorder by result.ind. That has been done during the alignment.
             for i,atom in enumerate(cluster.aligned_target):
                 if i == len(cluster.aligned_target): break # This is a weird bug...
-                try:
-                    avg_coords[i][0] += atom.coord[0]/nsuccessful
-                except:
-                    avg_coords[i][0] += atom.coord[0]/nsuccessful
+                avg_coords[i][0] += atom.coord[0]/nsuccessful
                 avg_coords[i][1] += atom.coord[1]/nsuccessful
                 avg_coords[i][2] += atom.coord[2]/nsuccessful
 
@@ -155,7 +157,7 @@ class AlignedData(object):
             if not reorder:
                 self.aligned_target = Cluster(center_included=False, comment='data.aligned_target', xsize=5.,ysize=5.,zsize=5., atoms=[Atom(i, 'Si', *coord) for i,coord in enumerate(data.aligned_target)])
             else:
-                self.aligned_target = Cluster(center_included=False, comment='data.aligned_target', xsize=5.,ysize=5.,zsize=5., atoms=[Atom(i, 'Si', *coord) for i,coord in enumerate([data.aligned_target[i-1] for i in self.order])])
+                self.aligned_target = Cluster(center_included=False, comment='data.aligned_target', xsize=5.,ysize=5.,zsize=5., atoms=[Atom(i, 'Si', *coord) for i,coord in enumerate([data.aligned_target[j-1] for j in self.order])])
 
             self.error = data.error # L1-norm
         else:
@@ -179,6 +181,9 @@ class Cluster(Model):
             if center != self.atoms[-1]:
                 self.remove(center)
                 self.add(center)
+            self.center_included = True
+        else:
+            self.center_included = False
 
     def fix_cluster_pbcs(self):
         # First recenter to first octant
@@ -238,13 +243,53 @@ class Cluster(Model):
         """ Returns the index of the center atom in self.atoms. """
         return sorted([(atom.coord[0]**2 + atom.coord[1]**2 + atom.coord[2]**2, atom) for atom in self.atoms])[0][1]
 
-    def find_closest(self, atom):
-        """ Returns the index of the closest atom to 'atom' in self.atoms. """
-        return sorted([((atom.coord[0]-atom2.coord[0])**2 + (atom.coord[1]-atom2.coord[1])**2 + (atom.coord[2]-atom2.coord[2])**2, atom2) for atom2 in self.atoms])[0][1]
+    def find_closest(self, atom, other_model=None):
+        """ Returns the index of the closest atom to 'atom' in self.atoms or in other_model if specified. """
+        if other_model is None:
+            other_model = self
+        return sorted([((atom.coord[0]-atom2.coord[0])**2 + (atom.coord[1]-atom2.coord[1])**2 + (atom.coord[2]-atom2.coord[2])**2, atom2) for atom2 in other_model.atoms])[0][1]
         
     def closest_list(self, atom):
         """ Returns a sorted list of (dist**2, atom) of the closest atoms to 'atom' in self.atoms. """
         return sorted([((atom.coord[0]-atom2.coord[0])**2 + (atom.coord[1]-atom2.coord[1])**2 + (atom.coord[2]-atom2.coord[2])**2, atom2) for atom2 in self.atoms])
+
+    def L1Norm(self, other):
+        natoms = min(self.natoms, other.natoms) - self.center_included
+        L1 = 0.0
+        for i in range(natoms):
+            L1 += abs(self.atoms[i].coord[0] - self.find_closest(self.atoms[i], other_model=other).coord[0])
+            L1 += abs(self.atoms[i].coord[1] - self.find_closest(self.atoms[i], other_model=other).coord[1])
+            L1 += abs(self.atoms[i].coord[2] - self.find_closest(self.atoms[i], other_model=other).coord[2])
+        return L1/natoms
+
+    def L2Norm(self, other):
+        natoms = min(self.natoms, other.natoms) - self.center_included
+        L2 = 0.0
+        for i in range(natoms):
+            L2 += math.sqrt( (self.atoms[i].coord[0] - other.atoms[i].coord[0])**2 + 
+                             (self.atoms[i].coord[1] - other.atoms[i].coord[1])**2 + 
+                             (self.atoms[i].coord[2] - other.atoms[i].coord[2])**2 )
+        return L2/natoms
+
+    def L2Norm2(self, other):
+        natoms = min(self.natoms, other.natoms) - self.center_included
+        L2 = 0.0
+        for i in range(natoms):
+            L2 += ((self.atoms[i].coord[0] - other.atoms[i].coord[0])**2 + 
+                  (self.atoms[i].coord[1] - other.atoms[i].coord[1])**2 + 
+                  (self.atoms[i].coord[2] - other.atoms[i].coord[2])**2)
+        return L2/natoms
+
+
+    def LinfNorm(self, other):
+        natoms = min(self.natoms, other.natoms) - self.center_included
+        Linf = [0.0 for i in range(natoms)]
+        for i in range(natoms):
+            Linf[i] = (abs(self.atoms[i].coord[0] - other.atoms[i].coord[0]) + 
+                       abs(self.atoms[i].coord[1] - other.atoms[i].coord[1]) + 
+                       abs(self.atoms[i].coord[2] - other.atoms[i].coord[2]))
+        return max(Linf)/natoms
+
 
 
 
@@ -268,10 +313,12 @@ def log_normal(x, y0, x0, amp, width):
     return y0 + amp * np.exp( -(np.log(x/x0)/width)**2 )
 
 def log_normal_large(x):
-    return log_normal(x, y0=-4.8386, amp=3183.3, x0=0.061456, width=0.26866)
+    return log_normal(x, y0=0, amp=3183.3, x0=0.061456, width=0.26866)
+    #return log_normal(x, y0=-4.8386, amp=3183.3, x0=0.061456, width=0.26866)
 
 def log_normal_small(x):
-    return log_normal(x, y0=-4.8386, amp=373.16, x0=0.037255, width=0.17297)
+    return log_normal(x, y0=0, amp=373.16, x0=0.037255, width=0.17297)
+    #return log_normal(x, y0=-4.8386, amp=373.16, x0=0.037255, width=0.17297)
 
 
 def load_pkl(filename):
@@ -317,6 +364,16 @@ def main():
     for vp in VP:
         f = HOME+'/working/Arash_uploads/pkls/' + ''.join([str(x) for x in vp]) + '/' + ''.join([str(x) for x in vp]) + '-icos.pkl'
         pkl_files.append(f)
+        f = HOME+'/working/Arash_uploads/pkls/' + ''.join([str(x) for x in vp]) + '/' + ''.join([str(x) for x in vp]) + '-less_than_12.pkl'
+        pkl_files.append(f)
+    temp = []
+    for f in pkl_files:
+        try:
+            open(f)
+            temp.append(f)
+        except:
+            pass
+    pkl_files = temp
 
     #pkl_files = [os.path.join(root, name) for root, dirs, files in os.walk('./pkls/') for name in files if '.pkl' in name]
 
@@ -338,19 +395,24 @@ def main():
     #    print(total)
     #return 0
 
-    of = open('output.txt', 'w')
+    #pkl_files = []
+    #pkl_files += ['/home/jjmaldonis/working/Arash_uploads/pkls/02800000/02800000-less_than_12.pkl']
+    #pkl_files += ['/home/jjmaldonis/working/Arash_uploads/pkls/001200000/001200000-icos.pkl']
+
+    print(pkl_files)
+
     table = {"Name":[], "Mean Error":[], "VP":[], "Number of clusters":[], "Stdev":[], "Large":[], "Small":[]}
     groups = []
     for f,pkl_file in enumerate(pkl_files):
         #if '03620' not in pkl_file: continue # I was using this and reorder=True below) to try to figure out how to calculate the correct average structure for clusters with 12 or less atoms
         aligned = load_pkl(pkl_file)
         print("Finished loading data pkl file {0}.".format(pkl_file))
-        g = Group([AlignedData(a, reorder=False) for a in aligned], comment = ''.join([str(x) for x in VP[f]]))
+        #g = Group([AlignedData(a, reorder=False) for a in aligned], comment = ''.join([str(x) for x in VP[f]]))
+        g = Group([AlignedData(a, reorder=False) for a in aligned])
         groups.append(g)
+        print("Finished rendering into Group!")
 
-        for cluster in g.clusters:
-            if not cluster.successful: continue
-            of.write("{0}\n".format(cluster.error))
+        avg = g.average_structure()
 
         print("  {0}".format(VP[f]))
         table["Name"].append('<{0}>'.format(','.join(str(x) for x in VP[f])))
@@ -360,8 +422,8 @@ def main():
 
         avg = g.average_structure()
         head, tail = os.path.split(pkl_file)
-        avg.write(tail[:-4] + '.xyz')
-        print("  Saved average structure to {0}".format(tail[:-4] + '.xyz'))
+        avg.write(os.path.join(head, tail[:-4] + '.xyz'))
+        print("  Saved average structure to {0}".format(os.path.join(head, tail[:-4] + '.xyz')))
         try:
             print("  VP of average structure: {0}".format(avg.center.vp))
             table["VP"].append(avg.center.vp)
@@ -380,11 +442,18 @@ def main():
         large = np.zeros(np.sum(g.successful), dtype=np.float)
         small = np.zeros(np.sum(g.successful), dtype=np.float)
         i = 0
+        of = open(os.path.join(head, 'output.txt'), 'w')
+        of.write('cluster_number, error, P_small, Linf, L1\n')
         for cluster in g.clusters:
             if not cluster.successful: continue
-            large[i] = log_normal_large(cluster.error)/amp_large
-            small[i] = log_normal_small(cluster.error)/amp_small
+            g_large = log_normal_large(cluster.error)#/amp_large
+            g_small = log_normal_small(cluster.error)#/amp_small
+            large[i] = g_large / (g_large+g_small)
+            small[i] = g_small / (g_large+g_small)
+            #print(i, cluster.error, small[i], large[i], cluster.aligned_target.LinfNorm(cluster.model), cluster.aligned_target.L1Norm(cluster.model))
+            of.write('{0}, {1}, {2}, {3}, {4}\n'.format(i, cluster.error, small[i], cluster.aligned_target.LinfNorm(cluster.model), cluster.aligned_target.L1Norm(cluster.model)))
             i += 1
+        of.close()
         print("  Probability that one of these clusters might be in the large peak: {0}".format(np.mean(large)))
         table["Large"].append(np.mean(large))
         print("  Probability that one of these clusters might be in the small peak: {0}".format(np.mean(small)))
@@ -393,6 +462,7 @@ def main():
         print('')
         print(tabulate(table, headers="keys"))
         print('')
+        open('table.txt', 'w').write(tabulate(table, headers="keys"))
     return 0
 
 
