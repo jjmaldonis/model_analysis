@@ -92,15 +92,19 @@ class Group(object):
         #print("  Center atom's VP index is {0}".format(m.center.vp))
         return m
 
-    def combine(self):
+    def combine(self, colorize=True):
         """ Combines the group of aligned clusters into a single model. """
         m = Model(comment='combined structures', xsize=5.,ysize=5.,zsize=5., atoms=[])
         count = 0
+        atom_types = ['Si', 'Na', 'Mg', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn', 'B', 'Al', 'Ga', 'C', 'Sn', 'Pb', 'O']
         for i,cluster in enumerate(self.clusters):
             if not cluster.successful: continue
             for j,atom in enumerate(cluster.aligned_target):
                 if j == len(cluster.aligned_target.atoms): break
-                new = Atom(count, 'Si', *atom.coord)
+                if colorize:
+                    new = Atom(count, atom_types[j], *atom.coord)
+                else:
+                    new = Atom(count, 'Si', *atom.coord)
                 count += 1
                 m.add(new)
         return m
@@ -266,10 +270,10 @@ class Cluster(Model):
         natoms = min(self.natoms, other.natoms) - self.center_included
         L2 = 0.0
         for i in range(natoms):
-            L2 += math.sqrt( (self.atoms[i].coord[0] - other.atoms[i].coord[0])**2 + 
-                             (self.atoms[i].coord[1] - other.atoms[i].coord[1])**2 + 
-                             (self.atoms[i].coord[2] - other.atoms[i].coord[2])**2 )
-        return L2/natoms
+            L2 += ((self.atoms[i].coord[0] - other.atoms[i].coord[0])**2 + 
+                   (self.atoms[i].coord[1] - other.atoms[i].coord[1])**2 + 
+                   (self.atoms[i].coord[2] - other.atoms[i].coord[2])**2)
+        return math.sqrt(L2)/natoms
 
     def L2Norm2(self, other):
         natoms = min(self.natoms, other.natoms) - self.center_included
@@ -398,6 +402,7 @@ def main():
     #pkl_files = []
     #pkl_files += ['/home/jjmaldonis/working/Arash_uploads/pkls/02800000/02800000-less_than_12.pkl']
     #pkl_files += ['/home/jjmaldonis/working/Arash_uploads/pkls/001200000/001200000-icos.pkl']
+    #pkl_files += ['/home/jjmaldonis/working/Arash_uploads/pkls/04440000/04440000-icos.pkl']
 
     print(pkl_files)
 
@@ -412,7 +417,6 @@ def main():
         groups.append(g)
         print("Finished rendering into Group!")
 
-        avg = g.average_structure()
 
         print("  {0}".format(VP[f]))
         table["Name"].append('<{0}>'.format(','.join(str(x) for x in VP[f])))
@@ -422,8 +426,10 @@ def main():
 
         avg = g.average_structure()
         head, tail = os.path.split(pkl_file)
-        avg.write(os.path.join(head, tail[:-4] + '.xyz'))
+        avg.write(os.path.join(head, tail[:-4] + '-average_structure.xyz'))
         print("  Saved average structure to {0}".format(os.path.join(head, tail[:-4] + '.xyz')))
+        combined = g.combine()
+        combined.write(os.path.join(head, tail[:-4] + '-combined.xyz'))
         try:
             print("  VP of average structure: {0}".format(avg.center.vp))
             table["VP"].append(avg.center.vp)
