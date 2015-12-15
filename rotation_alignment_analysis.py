@@ -192,7 +192,7 @@ class Cluster(Model):
     def fix_cluster_pbcs(self):
         # First recenter to first octant
         self.recenter()
-        meanx, meany, meanz = self.lx/4.0, self.ly/4.0, self.lz/4.0
+        meanx, meany, meanz = self.xsize/4.0, self.ysize/4.0, self.zsize/4.0
         for atom in self.atoms[1:]:
             atom.coord = (atom.coord[0]+meanx-self.atoms[0].coord[0], atom.coord[1]+meany-self.atoms[0].coord[1], atom.coord[2]+meanz-self.atoms[0].coord[2])
         self.atoms[0].coord = (self.atoms[0].coord[0]+meanx-self.atoms[0].coord[0], self.atoms[0].coord[1]+meany-self.atoms[0].coord[1], self.atoms[0].coord[2]+meanz-self.atoms[0].coord[2])
@@ -212,14 +212,14 @@ class Cluster(Model):
             if round(self.dist(self.atoms[0], atom)) != round(self.dist(self.atoms[0], atom, pbc=False)):
                 for c in atom.coord:
                     if c < 0:
-                        new.append(c+self.lx)
-                    elif c > self.lx:
-                        new.append(c-self.lx)
+                        new.append(c+self.xsize)
+                    elif c > self.xsize:
+                        new.append(c-self.xsize)
                     else:
                         new.append(c)
                 atom.coord = tuple(new)
         self.recenter()
-        return m
+        return self
 
     def rescale_bond_distances(self, avg):
         """ Rescales a cluster so that the average bond length is 'avg' """
@@ -237,7 +237,7 @@ class Cluster(Model):
         for atom in self.atoms:
             if atom.id != center.id:
                 atom.coord = (atom.coord[0]/current_avg*avg, atom.coord[1]/current_avg*avg, atom.coord[2]/current_avg*avg)
-        recenter_model(m)
+        self.recenter()
         return avg/current_avg
 
     def normalize_bond_distances(self):
