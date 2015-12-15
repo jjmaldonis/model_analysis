@@ -24,6 +24,8 @@ def main():
 
     # Directory name to save the files to
     dir = 'clusters'
+    if not os.path.exists(dir):
+        os.makedirs(dir)
 
     # Set the number of clusters to randomly select
     num_clusters = 10000
