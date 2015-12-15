@@ -3,20 +3,21 @@ import numpy as np
 from model import Model
 from math import cos, sin, atan2, sqrt, pi
 
-def rotate(m, a, axis):
+def rotate_about_axis(m, a, axis, degree=True):
     # This is rot from http://www.ks.uiuc.edu/Research/vmd/doxygen/Matrix4_8C-source.html
-    # a is the angle in degrees
     mat = [[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0]]
-    angle = a*np.pi/180.0 # in radians
-    if(axis == 'x'):
+    if degree: # convert to radians
+        angle = a*np.pi/180.0
+    else:
+        angle = a
+    if axis == 'x':
         mat = [[1,0,0],[0,cos(angle),sin(angle)],[0,-sin(angle),cos(angle)]]
-    elif(axis == 'y'):
+    elif axis == 'y':
         mat = [[cos(angle),0,-sin(angle)],[0,1,0],[sin(angle),0,cos(angle)]]
-    elif(axis == 'z'):
+    elif axis == 'z':
         mat = [[cos(angle),sin(angle),0],[-sin(angle),cos(angle),0],[0,0,1]]
     m = np.array(m)
     mat = np.array(mat)
-    #print(np.dot(m,mat), np.dot(mat,m))
     return np.dot(mat,m)
 
 def calc_rot_array_from_hkl(h,k,l):
@@ -25,10 +26,10 @@ def calc_rot_array_from_hkl(h,k,l):
     x = h
     y = k
     z = l
-    if(x == 0.0 and y == 0.0):
-        if(z == 0.0):
+    if x == 0.0 and y == 0.0:
+        if z == 0.0:
             return -1
-        if( z > 0 ):
+        if  z > 0:
             mat = rotate(mat,-90,'y')
         else:
             mat = rotate(mat,90,'y')
@@ -36,31 +37,27 @@ def calc_rot_array_from_hkl(h,k,l):
     theta = atan2(y,x)
     length = sqrt(x*x + y*y)
     phi = atan2(float(z), length)
-    #mat = rotate(mat,phi*180.0/np.pi,'y')
-    #mat = rotate(mat,-theta*180.0/np.pi,'z')
     mat = rotate(mat,theta*180.0/np.pi,'z')
     mat = rotate(mat,-phi*180.0/np.pi,'y')
     return mat
 
 
-def rot(model, arr):
-    """ arr should be a 9 element rotation numpy array, which we will reshape here
-        NOTE! This changes the model atom positions in the model """
-    if(type(arr) == list): arr = np.array(arr)
-    if(arr.shape == (9,)): arr = arr.reshape((3,3))
-    #print(arr)
+def rotate(model, alpha, beta, gamma, degree=True):
+    arr = calculate_rotation_array(alpha, beta, gamma, degree=degree)
+    if type(arr) == list: arr = np.array(arr)
+    if arr.shape == (9,): arr = arr.reshape((3,3))
     arr = np.linalg.inv(arr)
     
     for i,atom in enumerate(model.atoms):
         old_coord = [atom.coord[0], atom.coord[1], atom.coord[2]]
         new_coord = np.dot(np.asarray(old_coord), arr)
-        atom.set_coord(new_coord[0],new_coord[1],new_coord[2])
+        atom.coord = (new_coord[0], new_coord[1], new_coord[2])
 
 
-def calc_rot_array(t1,t2,t3,deg=True):
+def calculate_rotation_array(t1, t2, t3, degree=True):
     """ We construct the rotation matrix based on t1,t2,t3
         NOTE! Order matters! """
-    if(deg):
+    if degree:
         t1 = t1*np.pi/180.0 # in radians
         t2 = t2*np.pi/180.0 # in radians
         t3 = t3*np.pi/180.0 # in radians
