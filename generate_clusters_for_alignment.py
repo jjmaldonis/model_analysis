@@ -19,6 +19,10 @@ def main():
     md_modelfile = 'model_0k.xyz'
     md = Model(md_modelfile)
 
+    # Make a model to hold all the atoms we pull out to make sure the original model was sampled uniformly.
+    # Only the center atoms are added to this model.
+    holding_model = Model(comment='holding box', xsize=md.xsize, ysize=md.ysize, zsize=md.zsize, atoms=[])
+
     # Load the cutoff dictionary so that we can generate neighbors for every atom
     from cutoff import cutoff
 
@@ -47,13 +51,15 @@ def main():
                 if(atom in atom.neighs): atom.neighs.remove(atom)
                 atom.cn = len(atom.neighs)
 
+                holding_model.add(atom)
+
                 # Create the cluster, normalize the bond distances, and write to disk
                 atoms = md.atoms[rand].neighs + [md.atoms[rand]]
                 c = Cluster(
                     comment='cluster #{0} from atom {1}'.format(n, rand),
-                    xsize=5.0,
-                    ysize=5.0,
-                    zsize=5.0,
+                    xsize=md.xsize,
+                    ysize=md.ysize,
+                    zsize=md.zsize,
                     atoms=atoms,
                     center_included = True
                 )
@@ -63,6 +69,8 @@ def main():
                 c.write(os.path.join(dir, '{0}.xyz'.format(n)))
                 break
         print(n)
+
+    holding_model.write(os.path.join(dir, 'holding_model.xyz'))
 
 
 if __name__ == '__main__':
