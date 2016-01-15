@@ -25,13 +25,11 @@ class Masses(object):
         return self.masses[znum]
 
     def get_znum(self, mass):
-        for z in self.masses:
-            prec1 = len(str(mass)[int(math.log10(mass))+2:])
-            prec2 = len(str(self.masses[z])[int(math.log10(self.masses[z]))+2:])
+        prec1 = len(str(mass)[int(math.log10(mass))+2:])
+        for z, m in self.masses.items():
+            prec2 = len(str(m)[int(math.log10(m))+2:])
             p = min(prec1, prec2)
-            m1 = round(mass1, p)
-            m2 = round(mass2, p)
-            if(m1==mw): return z
+            if round(mass, p) == round(m, p): return z
         raise Exception("Mass not found!")
 
 
@@ -198,9 +196,12 @@ class Model(object):
     def write(self, outfile=None, ext=None):
         if(outfile is not None and ext is None): _,ext = os.path.splitext(outfile)
         elif(ext is None): ext = '.xyz'
-        if(ext == '.xyz' or 'xyz'):   self._write_xyz(outfile)
-        elif(ext == '.dat' or 'dat'): self._write_dat(outfile)
-        elif(ext == '.cif' or 'cif'): self._write_cif(outfile)
+        if(ext == '.xyz' or ext == 'xyz'):
+            self._write_xyz(outfile)
+        elif(ext == '.dat' or ext == 'dat'):
+            self._write_dat(outfile)
+        elif(ext == '.cif' or ext == 'cif'):
+            self._write_cif(outfile)
         return ''
 
     def _write_dat(self, outfile=None):

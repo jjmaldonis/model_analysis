@@ -7,12 +7,8 @@
 import sys, math, copy
 from collections import OrderedDict
 from znum2sym import z2sym
-import vor
 from model import Model
 from voronoi_3d import voronoi_3d
-from vor import Vor, fortran_voronoi_3d
-from recenter_model import recenter_model
-from nearest_atoms import find_center_atom
 
 """ Functions:
 load_index_file(indexfile)
@@ -224,23 +220,6 @@ def fix_cluster_pbcs(m):
     m.recenter()
     return m
 
-def normalize_bond_distances(m):
-    """ Rescales a cluster so that the average bond length is 1.0 """
-    center = find_center_atom(m)
-    for atom in m.atoms:
-        atom.coord = (atom.coord[0]-center.coord[0], atom.coord[1]-center.coord[1], atom.coord[2]-center.coord[2])
-
-    avg = 0.
-    for atom in m.atoms:
-        if atom.id != center.id:
-            avg += m.dist(center, atom)
-    avg /= (m.natoms-1)
-    for atom in m.atoms:
-        if atom.id != center.id:
-            atom.coord = (atom.coord[0]/avg, atom.coord[1]/avg, atom.coord[2]/avg)
-    recenter_model(m)
-    return avg
-
 
 def main():
     # sys.argv == [categorize_parameters.txt, modelfile]
@@ -255,37 +234,26 @@ def main():
 
     m0 = Model(modelfiles[0])
     m0.generate_neighbors(cutoff)
-    #voronoi_3d(m0, cutoff)
-    #set_atom_vp_types(m0, vp_dict)
-    #stats0 = VPStatistics(m0)
+    voronoi_3d(m0, cutoff)
+    set_atom_vp_types(m0, vp_dict)
+    stats0 = VPStatistics(m0)
+    print(modelfiles[0])
     #stats0.print_indexes()
-    #stats0.print_categories()
-
-    from atom import Atom
-    m = Model('atoms with less than 12 neighbors in Zr50Cu45Al15 MD model (originally with 91200 atoms)', m0.lx,m0.ly,m0.lz, [])
-    count = 0
-    for j,atom in enumerate(m0.atoms):
-        if len(atom.neighs) >= 12: continue
-        new = Atom(count, 'Si', *atom.coord)
-        count += 1
-        print("Added new atom {0}".format(new))
-        m.add(new)
-    m.write('less_than_12_neighbors.xyz')
-
-
+    stats0.print_categories()
+    return
 
     if len(modelfiles) > 1:
         for modelfile in modelfiles[1:]:
+            print(modelfile)
             m = Model(modelfile)
-            voronoi_3d(m,cutoff)
-            set_atom_vp_types(m,vp_dict)
+            voronoi_3d(m, cutoff)
+            set_atom_vp_types(m, vp_dict)
+            stats = VPStatistics(m)
+            stats.print_categories()
 
-            stats0 = stats0 + m
-            stats0.print_categories()
-            stats0.print_indexes()
-            #stats = VPStatistics(m)
-            #stats.print_categories()
-            #stats.print_indexes()
+            #stats0 = stats0 + m
+            #stats0.print_indexes()
+            #stats0.print_categories()
 
 
 

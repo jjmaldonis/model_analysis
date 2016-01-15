@@ -161,6 +161,15 @@ class AlignedData(object):
             if not reorder:
                 self.aligned_target = Cluster(center_included=False, comment='data.aligned_target', xsize=5.,ysize=5.,zsize=5., atoms=[Atom(i, 'Si', *coord) for i,coord in enumerate(data.aligned_target)])
             else:
+                #print(self.order)
+                while max(self.order) > len(self.order)-1:
+                    for i, x in enumerate(self.order):
+                        if i not in self.order:
+                            break
+                    for j, x in enumerate(self.order):
+                        if x > i:
+                            self.order[j] = x-1
+                self.order = [i+1 for i in self.order]
                 self.aligned_target = Cluster(center_included=False, comment='data.aligned_target', xsize=5.,ysize=5.,zsize=5., atoms=[Atom(i, 'Si', *coord) for i,coord in enumerate([data.aligned_target[j-1] for j in self.order])])
 
             self.error = data.error # L1-norm
@@ -197,16 +206,6 @@ class Cluster(Model):
             atom.coord = (atom.coord[0]+meanx-self.atoms[0].coord[0], atom.coord[1]+meany-self.atoms[0].coord[1], atom.coord[2]+meanz-self.atoms[0].coord[2])
         self.atoms[0].coord = (self.atoms[0].coord[0]+meanx-self.atoms[0].coord[0], self.atoms[0].coord[1]+meany-self.atoms[0].coord[1], self.atoms[0].coord[2]+meanz-self.atoms[0].coord[2])
 
-        # See if we need to fix
-        fix = False
-        for atom in self.atoms[1:]:
-            if round(self.dist(self.atoms[0], atom)) != round(self.dist(self.atoms[0], atom, pbc=False)):
-                fix = True
-                break
-        else:
-            self.recenter()
-            return m
-        # If so, fix
         for atom in self.atoms:
             new = []
             if round(self.dist(self.atoms[0], atom)) != round(self.dist(self.atoms[0], atom, pbc=False)):
@@ -223,6 +222,11 @@ class Cluster(Model):
 
     def rescale_bond_distances(self, avg):
         """ Rescales a cluster so that the average bond length is 'avg' """
+        current_avg = 1.0
+        for atom in self.atoms:
+            atom.coord = (atom.coord[0]/current_avg*avg, atom.coord[1]/current_avg*avg, atom.coord[2]/current_avg*avg)
+        return avg
+
         center = self.find_center_atom()
 
         # Place the center atom at (0,0,0) and move every other atom relative to that translation
@@ -345,6 +349,16 @@ def load_vp(filename, start=0):
     return vp
 
 
+def get_bond_scaling(dir, i):
+    f = '/home/jjmaldonis/working/ZrCuAl/md_80k/{dir}/{dir}.{i}.xyz'.format(dir=dir, i=i)
+    m = Model(f)
+    index = m.comment.index('bond length scaling factor is')
+    index += len('bond length scaling factor is ')
+    x = float(m.comment[index:])
+    return x
+
+
+
 
 def main():
     #pkl_files = ['00120_aligned_to_average_polys/00120_aligned_to_avg0012_8_as_model.pkl', '00120_aligned_to_average_polys/00120_aligned_to_avg0012_as_model.pkl', '00120_aligned_to_average_polys/00120_aligned_to_avg0282_9_as_model.pkl', '00120_aligned_to_average_polys/00120_aligned_to_avg0282_as_model.pkl',
@@ -409,13 +423,29 @@ def main():
     table = {"Name":[], "Mean Error":[], "VP":[], "Number of clusters":[], "Stdev":[], "Large":[], "Small":[]}
     groups = []
     for f,pkl_file in enumerate(pkl_files):
-        #if '03620' not in pkl_file: continue # I was using this and reorder=True below) to try to figure out how to calculate the correct average structure for clusters with 12 or less atoms
+        head, tail = os.path.split(pkl_file)
+
         aligned = load_pkl(pkl_file)
         print("Finished loading data pkl file {0}.".format(pkl_file))
         #g = Group([AlignedData(a, reorder=False) for a in aligned], comment = ''.join([str(x) for x in VP[f]]))
         g = Group([AlignedData(a, reorder=False) for a in aligned])
         groups.append(g)
         print("Finished rendering into Group!")
+
+        print("Rescaling every cluster...")
+        vp_string = os.path.split(head)[-1]
+        i = 0
+        for cluster in g.clusters:
+            if not cluster.successful: continue
+            scaling = get_bond_scaling(vp_string, i)
+            cluster.model.rescale_bond_distances(scaling)
+            cluster.target.rescale_bond_distances(scaling)
+            cluster.aligned_target.rescale_bond_distances(scaling)
+            l2 =  cluster.aligned_target.L2Norm(cluster.model)
+            #print(l2 / cluster.error)
+            cluster.error = l2
+            i += 1
+        print("Finished rescaling every cluster!")
 
 
         print("  {0}".format(VP[f]))
@@ -425,7 +455,6 @@ def main():
         print("  Number of atoms in those clusters: {0}".format(g.natoms))
 
         avg = g.average_structure()
-        head, tail = os.path.split(pkl_file)
         avg.write(os.path.join(head, tail[:-4] + '-average_structure.xyz'))
         print("  Saved average structure to {0}".format(os.path.join(head, tail[:-4] + '.xyz')))
         combined = g.combine()
@@ -445,25 +474,27 @@ def main():
 
         amp_large = 3183.3
         amp_small = 373.16
-        large = np.zeros(np.sum(g.successful), dtype=np.float)
-        small = np.zeros(np.sum(g.successful), dtype=np.float)
+        #large = np.zeros(np.sum(g.successful), dtype=np.float)
+        #small = np.zeros(np.sum(g.successful), dtype=np.float)
         i = 0
         of = open(os.path.join(head, 'output.txt'), 'w')
-        of.write('cluster_number, error, P_small, Linf, L1\n')
+        #of.write('cluster_number, error, P_small, Linf, L1\n')
+        of.write('cluster_number, error, Linf, L1\n')
         for cluster in g.clusters:
             if not cluster.successful: continue
-            g_large = log_normal_large(cluster.error)#/amp_large
-            g_small = log_normal_small(cluster.error)#/amp_small
-            large[i] = g_large / (g_large+g_small)
-            small[i] = g_small / (g_large+g_small)
+            #g_large = log_normal_large(cluster.error)#/amp_large
+            #g_small = log_normal_small(cluster.error)#/amp_small
+            #large[i] = g_large / (g_large+g_small)
+            #small[i] = g_small / (g_large+g_small)
             #print(i, cluster.error, small[i], large[i], cluster.aligned_target.LinfNorm(cluster.model), cluster.aligned_target.L1Norm(cluster.model))
-            of.write('{0}, {1}, {2}, {3}, {4}\n'.format(i, cluster.error, small[i], cluster.aligned_target.LinfNorm(cluster.model), cluster.aligned_target.L1Norm(cluster.model)))
+            #of.write('{0}, {1}, {2}, {3}, {4}\n'.format(i, cluster.error, small[i], cluster.aligned_target.LinfNorm(cluster.model), cluster.aligned_target.L1Norm(cluster.model)))
+            of.write('{0}, {1}, {2}, {3}\n'.format(i, cluster.error, cluster.aligned_target.LinfNorm(cluster.model), cluster.aligned_target.L1Norm(cluster.model)))
             i += 1
         of.close()
-        print("  Probability that one of these clusters might be in the large peak: {0}".format(np.mean(large)))
-        table["Large"].append(np.mean(large))
-        print("  Probability that one of these clusters might be in the small peak: {0}".format(np.mean(small)))
-        table["Small"].append(np.mean(small))
+        #print("  Probability that one of these clusters might be in the large peak: {0}".format(np.mean(large)))
+        #table["Large"].append(np.mean(large))
+        #print("  Probability that one of these clusters might be in the small peak: {0}".format(np.mean(small)))
+        #table["Small"].append(np.mean(small))
 
         print('')
         print(tabulate(table, headers="keys"))

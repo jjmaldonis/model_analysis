@@ -6,13 +6,10 @@ from math import sqrt
 from fractions import Fraction
 from model import Model
 from atom import Atom
-from rot_3d import rot as rotate
-from rot_3d import calc_rot_array
-from model_to_gams_input import convert
+from rotate_3d import rotate
 
 def dodecahedron(b,save=False,filename=None):
     # http://en.wikipedia.org/wiki/Dodecahedron#Regular_dodecahedron
-    if(filename == None): filename = 'dodecahedron.xyz'
     # b is the nearest-neighbor interatomic bond distance
     p = 1.61803398875 # golden ratio
     b = b * 0.5 * p
@@ -50,11 +47,14 @@ def dodecahedron(b,save=False,filename=None):
             if(abs(x) > m): m = abs(x)
 
     atoms = [Atom(i,14,c[0],c[1],c[2]) for i,c in enumerate(coords)]
-    model = Model('dodecahedron',m,m,m,atoms)
-    model.filename = filename
+    model = Model(comment='dodecahedron', xsize=m, ysize=m, zsize=m, atoms=atoms)
 
     if(save):
         model.write_real_xyz(model.filename)
+        if(filename == None):
+            filename = 'dodecahedron.xyz'
+        else:
+            model.filename = filename
         #f = open(filename,'w')
         #f.write(str(len(coords))+'\n')
         #f.write('{0} {0} {0} comment\n'.format(m))
@@ -65,7 +65,6 @@ def dodecahedron(b,save=False,filename=None):
 
 def icosahedron(b,save=False,filename=None):
     # http://en.wikipedia.org/wiki/Regular_icosahedron
-    if(filename == None): filename = 'icosahedron.xyz'
     # b is the nearest-neighbor interatomic bond distance
     b = b * sqrt(2)* 1.113516364 / 1.84375
     coords = [atom.coord for atom in dodecahedron(b).atoms]
@@ -93,10 +92,13 @@ def icosahedron(b,save=False,filename=None):
             if(abs(x) > m): m = abs(x)
 
     atoms = [Atom(i,14,c[0],c[1],c[2]) for i,c in enumerate(face_coords)]
-    model = Model('icosahedron',m,m,m,atoms)
-    model.filename = filename
+    model = Model(comment='icosahedron', xsize=m, ysize=m, zsize=m, atoms=atoms)
     if(save):
         model.write_real_xyz(model.filename)
+        if(filename == None):
+            filename = 'icosahedron.xyz'
+        else:
+            model.filename = filename
         #f = open(filename,'w')
         #f.write(str(len(face_coords))+'\n')
         #f.write('{0} {0} {0} comment\n'.format(m))
@@ -146,51 +148,6 @@ def swap_atom(m,i=None,j=None):
     #print("Swapped atoms {0} and {1}".format(i,j))
     return("Swapped atoms {0} and {1}".format(i,j))
 
-def create_basic_models():
-    lattice_param = 1
-    a = 30
-    b = 135
-    c = 45
-    rot_arr = calc_rot_array(a,b,c,deg=True)
-
-    perfect = icosahedron(lattice_param,save=True,filename='icosahedron.perfect.xyz')
-    convert(perfect,'prototype','icosahedron.perfect.txt')
-
-    sm = copy.deepcopy(perfect)
-    swap_atom(sm,2,3)
-    sm.write_real_xyz('icosahedron.perfect.swap.xyz')
-    convert(sm,'polyhedron','icosahedron.perfect.swap.txt')
-
-    rm = copy.deepcopy(perfect)
-    rotate(rm,rot_arr)
-    rm.write_real_xyz('icosahedron.perfect.rot.xyz')
-    convert(rm,'polyhedron','icosahedron.perfect.rot.txt')
-
-    rm = copy.deepcopy(sm)
-    rotate(rm,rot_arr)
-    rm.write_real_xyz('icosahedron.perfect.swap.rot.xyz')
-    convert(rm,'polyhedron','icosahedron.perfect.swap.rot.txt')
-
-    imperfect = copy.deepcopy(perfect)
-    perturb_atom(imperfect,1,0.1,0)
-    imperfect.write_real_xyz('icosahedron.imperfect.xyz')
-    convert(imperfect,'prototype','icosahedron.imperfect.txt')
-
-    sim = copy.deepcopy(imperfect)
-    swap_atom(sim,2,3)
-    sim.write_real_xyz('icosahedron.imperfect.swap.xyz')
-    convert(sim,'polyhedron','icosahedron.imperfect.swap.txt')
-
-    rim = copy.deepcopy(imperfect)
-    rotate(rim,rot_arr)
-    rim.write_real_xyz('icosahedron.imperfect.rot.xyz')
-    convert(rim,'polyhedron','icosahedron.imperfect.rot.txt')
-
-    rim = copy.deepcopy(sim)
-    rotate(rim,rot_arr)
-    rim.write_real_xyz('icosahedron.imperfect.swap.rot.xyz')
-    convert(rim,'polyhedron','icosahedron.imperfect.swap.rot.txt')
-
 def create_randomized_model(num,dir=dir):
     lattice_param = 1
     perfect = icosahedron(lattice_param,save=True,filename='icosahedron.perfect.xyz')
@@ -204,14 +161,13 @@ def create_randomized_model(num,dir=dir):
         #a = random.randrange(0,345,15)
         #b = random.randrange(0,345,15)
         #c = random.randrange(0,345,15)
-        rot_arr = calc_rot_array(a,b,c,deg=True)
 
         imperfect = copy.deepcopy(perfect)
         perturb_atom(imperfect,axis='all')
         #swap_atom(imperfect)
         imperfect.write_real_xyz(dir+'icosahedron.{0}.random.xyz'.format(i))
         convert(imperfect,'polyhedron',dir+'icosahedron.{0}.random.txt'.format(i))
-        rotate(imperfect,rot_arr)
+        rotate(imperfect, a, b, c, degree=True)
         imperfect.write_real_xyz(dir+'icosahedron.{0}.random.rot.xyz'.format(i))
         convert(imperfect,'polyhedron',dir+'icosahedron.{0}.random.rot.txt'.format(i))
 
