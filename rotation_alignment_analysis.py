@@ -26,6 +26,7 @@ def cart2sph(x,y,z):
     return r, elev, az
 
 
+
 class Group(object):
     """ This object is designed to hold a group of AlignedData's and includes functions to perform operations on that group as a whole. """
     def __init__(self, clusters, comment=None):
@@ -50,25 +51,30 @@ class Group(object):
         """ The number of clusters in this Group. """
         return len(self.clusters)
 
+
     @property
     def successful(self):
         """ A mask to operate only on successfully aligned clusters. """
         return np.array([cluster.successful for cluster in self.clusters])
     
+
     @property
     def nsuccessful(self):
         """ Returns the number of successfully aligned clusters in this Group. """
         return sum(self.successful)
+
 
     @property
     def coordinates(self):
         """ A numpy array of shape (3, nclusters) with the coordination positions of each atom for each cluster. """
         return np.array( [ [a.coord[0], a.coord[1], a.coord[2]] for a in cluster.atoms for cluster in self.clusters] ).T
 
+
     @property
     def natoms(self):
         """ Returns the number of atoms in the clusters. If there are different numbers of atoms in the clusters, an exception is raised. """
         return self._natoms
+
 
     def average_structure(self):
         """ Calculates the atom positions of the average structure of the aligned clusters in the group. """
@@ -92,6 +98,7 @@ class Group(object):
         #print("  Center atom's VP index is {0}".format(m.center.vp))
         return m
 
+
     def combine(self, colorize=True):
         """ Combines the group of aligned clusters into a single model. """
         m = Model(comment='combined structures', xsize=5.,ysize=5.,zsize=5., atoms=[])
@@ -108,6 +115,7 @@ class Group(object):
                 count += 1
                 m.add(new)
         return m
+
 
     def stdev(self, avg=None):
         if avg is None:
@@ -137,6 +145,7 @@ class Group(object):
             std = (np.std(X) + np.std(Y) +np.std(Z))/3.
             stdevs.append(std)
         return np.mean(stdevs)#, np.std(stdevs)
+
 
     @property
     def mean_error(self):
@@ -178,6 +187,7 @@ class AlignedData(object):
             self.model = []
             self.target = []
 
+
     @property
     def natoms(self):
         return self.model.natoms # Or target? or ind? What happens when the target and model do not have the same number of atoms?
@@ -188,6 +198,11 @@ class Cluster(Model):
     """ An extension of Model that defines helper functions for small clusters. """
     def __init__(self, center_included=True, **kwargs):
         super(Cluster, self).__init__(**kwargs) # Send input args to Model constructor
+
+        # If we don't run these two lines first, self.find_center_atom() may return the incorrect atom!
+        self.fix_cluster_pbcs()
+        self.recenter()
+
         if center_included:
             # Remove the center atom and put it on the end (if it isn't already there)
             center = self.find_center_atom()
@@ -197,6 +212,7 @@ class Cluster(Model):
             self.center_included = True
         else:
             self.center_included = False
+
 
     def fix_cluster_pbcs(self):
         # First recenter to first octant
@@ -219,6 +235,7 @@ class Cluster(Model):
                 atom.coord = tuple(new)
         self.recenter()
         return self
+
 
     def rescale_bond_distances(self, avg):
         """ Rescales a cluster so that the average bond length is 'avg' """
@@ -244,12 +261,15 @@ class Cluster(Model):
         self.recenter()
         return avg/current_avg
 
+
     def normalize_bond_distances(self):
         return self.rescale_bond_distances(avg=1.0)
 
+
     def find_center_atom(self):
-        """ Returns the index of the center atom in self.atoms. """
+        """ Returns the center atom in self.atoms. """
         return sorted([(atom.coord[0]**2 + atom.coord[1]**2 + atom.coord[2]**2, atom) for atom in self.atoms])[0][1]
+
 
     def find_closest(self, atom, other_model=None):
         """ Returns the index of the closest atom to 'atom' in self.atoms or in other_model if specified. """
@@ -257,9 +277,11 @@ class Cluster(Model):
             other_model = self
         return sorted([((atom.coord[0]-atom2.coord[0])**2 + (atom.coord[1]-atom2.coord[1])**2 + (atom.coord[2]-atom2.coord[2])**2, atom2) for atom2 in other_model.atoms])[0][1]
         
+
     def closest_list(self, atom):
         """ Returns a sorted list of (dist**2, atom) of the closest atoms to 'atom' in self.atoms. """
         return sorted([((atom.coord[0]-atom2.coord[0])**2 + (atom.coord[1]-atom2.coord[1])**2 + (atom.coord[2]-atom2.coord[2])**2, atom2) for atom2 in self.atoms])
+
 
     def L1Norm(self, other):
         natoms = min(self.natoms, other.natoms) - self.center_included
@@ -270,6 +292,7 @@ class Cluster(Model):
             L1 += abs(self.atoms[i].coord[2] - self.find_closest(self.atoms[i], other_model=other).coord[2])
         return L1/natoms
 
+
     def L2Norm(self, other):
         natoms = min(self.natoms, other.natoms) - self.center_included
         L2 = 0.0
@@ -278,6 +301,7 @@ class Cluster(Model):
                    (self.atoms[i].coord[1] - other.atoms[i].coord[1])**2 + 
                    (self.atoms[i].coord[2] - other.atoms[i].coord[2])**2)
         return math.sqrt(L2)/natoms
+
 
     def L2Norm2(self, other):
         natoms = min(self.natoms, other.natoms) - self.center_included
@@ -300,7 +324,6 @@ class Cluster(Model):
 
 
 
-
 class Aligned_data:
     ind = None
     model = None
@@ -320,9 +343,11 @@ class Aligned_data:
 def log_normal(x, y0, x0, amp, width):
     return y0 + amp * np.exp( -(np.log(x/x0)/width)**2 )
 
+
 def log_normal_large(x):
     return log_normal(x, y0=0, amp=3183.3, x0=0.061456, width=0.26866)
     #return log_normal(x, y0=-4.8386, amp=3183.3, x0=0.061456, width=0.26866)
+
 
 def log_normal_small(x):
     return log_normal(x, y0=0, amp=373.16, x0=0.037255, width=0.17297)
@@ -335,6 +360,7 @@ def load_pkl(filename):
         data = pickle.load(o)
         o.close()
     return data
+
 
 def load_vp(filename, start=0):
     content = open(filename, 'r').readlines()

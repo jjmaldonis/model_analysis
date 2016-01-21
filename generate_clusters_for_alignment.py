@@ -3,9 +3,10 @@
 2) randomly picks an atom in that model
 3) creates a nearest-neighbor cluster around that atom
 4) fixes any periodic boundary problems where the cluster wraps around the edge of the model
-5) normalizes the average bond distance of the cluster to be 1.0
-6) saves the cluster to a directory of your choosing
-7) steps 2-6 are repeated 'num_clusters' times, and no atom can be selected twice
+5) moves the center atom to the end of the atom list
+6) normalizes the average bond distance of the cluster to be 1.0
+7) saves the cluster to a directory of your choosing
+8) steps 2-6 are repeated 'num_clusters' times, and no atom can be selected twice
 
 These clusters are used as input for Arash's rotation alignment code.
 """
@@ -63,12 +64,12 @@ def main():
                     atoms=atoms,
                     center_included = True
                 )
-                c.fix_cluster_pbcs()
                 ratio = c.normalize_bond_distances()
                 c.comment='cluster #{0} from atom {1}; normalized bond distances by {2}'.format(n, rand, ratio)
                 c.write(os.path.join(dir, '{0}.xyz'.format(n)))
                 break
         print(n)
+        print(c)
 
     holding_model.write(os.path.join(dir, 'holding_model.xyz'))
 
