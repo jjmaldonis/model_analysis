@@ -193,18 +193,18 @@ class Model(object):
                 natoms -= 1
             aflag += 1
 
-    def write(self, outfile=None, ext=None):
+    def write(self, outfile=None, ext=None, reverse=True):
         if(outfile is not None and ext is None): _,ext = os.path.splitext(outfile)
         elif(ext is None): ext = '.xyz'
         if(ext == '.xyz' or ext == 'xyz'):
             self._write_xyz(outfile)
         elif(ext == '.dat' or ext == 'dat'):
-            self._write_dat(outfile)
+            self._write_dat(outfile, reverse)
         elif(ext == '.cif' or ext == 'cif'):
             self._write_cif(outfile)
         return ''
 
-    def _write_dat(self, outfile=None):
+    def _write_dat(self, outfile=None, reverse=True):
         if outfile is None: of = sys.stdout
         else:               of = open(outfile,'w')
         of.write(self.comment+'\n')
@@ -216,7 +216,8 @@ class Model(object):
         of.write('Masses\n\n')
         atomtypes = list(self.atomtypes)
         atomtypes.sort()
-        atomtypes.reverse()
+        if reverse:
+            atomtypes.reverse()
         for i,z in enumerate(atomtypes):
             of.write('{0} {1}\n'.format(i+1,round(masses.get_mass(z),2)))
         of.write('\n')
@@ -327,13 +328,12 @@ class Model(object):
             z = z - self.zsize*round(z/self.zsize)
         return x**2+y**2+z**2
 
-    def get_all_dists(self):
-        dists = [0. for i in range(self.natoms*self.natoms)]
-        count = 0
+    def get_all_neighbor_distances(self):
+        dists = []
         for atomi in self.atoms:
-            for atomj in self.atoms[self.atoms.index(atomi)+1:]:
-                dists[count] = (atomi, atomj, self.dist(atomi,atomj))
-                count += 1
+            for atomj in atomi.neighs: #self.atoms[self.atoms.index(atomi)+1:]:
+                if atomi is atomj: continue
+                dists.append( (atomi, atomj, self.dist(atomi,atomj)) )
         return dists
 
     def nearest_neigh_of_same_type(self, atom, cutoff=3.5):
