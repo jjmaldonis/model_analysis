@@ -13,6 +13,9 @@ import math
 from collections import defaultdict, Counter
 from tools import drange
 
+import voronoi_3d
+import rotate_3d
+
 
 """ Add these functions into Model:
 """
@@ -646,6 +649,29 @@ class Model(object):
 
         dtheta = np.arange(0.0,180.0+dtheta*180.0/np.pi,dtheta*180.0/np.pi)
         return dtheta,hist
+
+    def voronoi(self, atom=None, atoms=None, cutoff=None, atol=0.03, tol=0.03, tltol=0.03):
+        if atoms is not None and isinstance(atoms, list):
+            for atom in atoms:
+                if atom.neighs is None:
+                    raise Exception("Atom {0} does not have neighbors.".format(atom))
+                voronoi_3d.calculate_atom(self, atom, cutoff, atol=0.03, tol=0.03, tltol=0.03)
+        elif atom is not None:
+            if atom.neighs is None:
+                raise Exception("Atom {0} does not have neighbors.".format(atom))
+            voronoi_3d.calculate_atom(self, atom, cutoff, atol=0.03, tol=0.03, tltol=0.03)
+        else:
+            self.voronoi(atoms=self.atoms, atol=atol, tol=tol, tltol=tltol)
+        return None
+
+    def rotate(self, array=None, alpha=None, beta=None, gamma=None, degree=True, invert=True):
+        rotate_3d.rotate(self, array, alpha, beta, gamma, degree, invert)
+
+    def translate(self, vector):
+        for i,atom in enumerate(self.atoms):
+            old_coord = [atom.coord[0], atom.coord[1], atom.coord[2]]
+            new_coord = (old_coord[0] + vector[0], old_coord[1] + vector[1], old_coord[2] + vector[2])
+            atom.coord = (new_coord[0], new_coord[1], new_coord[2])
 
 
 
