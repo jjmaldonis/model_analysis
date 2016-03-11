@@ -271,11 +271,6 @@ class Cluster(Model):
 
     def rescale_bond_distances(self, avg):
         """ Rescales a cluster so that the average bond length is 'avg' """
-        current_avg = 1.0
-        for atom in self.atoms:
-            atom.coord = (atom.coord[0]/current_avg*avg, atom.coord[1]/current_avg*avg, atom.coord[2]/current_avg*avg)
-        return avg
-
         center = self.find_center_atom()
 
         # Place the center atom at (0,0,0) and move every other atom relative to that translation
