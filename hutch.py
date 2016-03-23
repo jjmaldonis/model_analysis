@@ -16,7 +16,7 @@ floor = intify(floor)
 class Hutch(object):
     """ Implements a hutch for a 3D atom model """
 
-    def __init__(self, model=None):
+    def __init__(self, model=None, check=False):
         if model is None:
             raise Exception("No input model was given to Hutch().")
         if(model.xsize != model.ysize != model.zsize):
@@ -33,7 +33,8 @@ class Hutch(object):
         # Put atoms into their correct hutch
         for atom in model.atoms:
             self.add_atom(atom)
-        self.check_hutches(model)
+        if check:
+            self.check_hutches(model)
 
     @property
     def xsize(self):

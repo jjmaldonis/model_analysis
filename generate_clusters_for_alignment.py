@@ -15,6 +15,24 @@ import sys, os, random
 from model import Model
 from rotation_alignment_analysis import Cluster
 
+
+#def create_cluster(md, atom, start, n, rand, center_included=True):
+#    # Create the cluster, normalize the bond distances, and write to disk
+#    #atoms = md.atoms[rand].neighs + [md.atoms[rand]]
+#    atoms = atom.neighs + [atoms]
+#    c = Cluster(
+#        comment='cluster #{0} from atom {1}'.format(n-start, rand),
+#        xsize=md.xsize,
+#        ysize=md.ysize,
+#        zsize=md.zsize,
+#        atoms=atoms,
+#        center_included = center_included
+#    )
+#    ratio = c.normalize_bond_distances()
+#    c.comment='cluster #{0} from atom {1}; normalized bond distances by {2}'.format(n-start, rand, ratio)
+#    return c
+
+
 def main():
     # Load the MD model
     modelfile = sys.argv[1]
@@ -28,22 +46,33 @@ def main():
     from cutoff import cutoff
 
     # Directory name to save the files to
-    dir = 'clusters'
+    dir = 'all_91200_clusters'
     if not os.path.exists(dir):
         os.makedirs(dir)
 
     # Set the number of clusters to randomly select
-    num_clusters = 10000
-    num_clusters = min(num_clusters, md.natoms)
+    num_clusters = 'all'
+    if num_clusters == 'all' or num_clusters == md.natoms:
+        random_selection = False
+        num_clusters = md.natoms
+    else:
+        num_clusters = min(num_clusters, md.natoms)
+        random_selection = True
 
-    unpicked = range(md.natoms)
+    if random_selection:
+        unpicked = range(md.natoms)
 
-    for n in range(num_clusters):
-        rand = random.choice(unpicked)
-        unpicked.remove(rand)
+    start = 0
+    for n in range(start, num_clusters+start):
+        if random_selection:
+            rand = random.choice(unpicked)
+            unpicked.remove(rand)
+            atom = md.atoms[rand]
+        else:
+            atom = md.atoms[n-start]
+            rand = n-start
 
         # Generate neighbors for this atom
-        atom = md.atoms[rand]
         atom.neighs = md.get_atoms_in_cutoff(atom, cutoff)
         if(atom in atom.neighs): atom.neighs.remove(atom)
         atom.cn = len(atom.neighs)
@@ -51,9 +80,10 @@ def main():
         holding_model.add(atom)
 
         # Create the cluster, normalize the bond distances, and write to disk
-        atoms = md.atoms[rand].neighs + [md.atoms[rand]]
+        atoms = atom.neighs + [atom]
+        # c = create_cluster(md, atom, start, n, rand, center_included=True)
         c = Cluster(
-            comment='cluster #{0} from atom {1}'.format(n, rand),
+            comment='cluster #{0} from atom {1}'.format(n-start, rand),
             xsize=md.xsize,
             ysize=md.ysize,
             zsize=md.zsize,
@@ -61,9 +91,9 @@ def main():
             center_included = True
         )
         ratio = c.normalize_bond_distances()
-        c.comment='cluster #{0} from atom {1}; normalized bond distances by {2}'.format(n, rand, ratio)
+        c.comment='cluster #{0} from atom {1}; normalized bond distances by {2}'.format(n-start, rand, ratio)
         c.write(os.path.join(dir, '{0}.xyz'.format(n)))
-        print(n, atom.id)
+        print(n-start, atom.id)
         #print(c)
 
     holding_model.write(os.path.join(dir, 'holding_model.xyz'))

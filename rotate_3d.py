@@ -1,6 +1,5 @@
 import sys
 import numpy as np
-from model import Model
 from math import cos, sin, atan2, sqrt, pi
 
 def rotate_about_axis(m, a, axis, degree=True):
@@ -42,15 +41,22 @@ def calc_rot_array_from_hkl(h,k,l):
     return mat
 
 
-def rotate(model, alpha, beta, gamma, degree=True):
-    arr = calculate_rotation_array(alpha, beta, gamma, degree=degree)
-    if type(arr) == list: arr = np.array(arr)
-    if arr.shape == (9,): arr = arr.reshape((3,3))
-    arr = np.linalg.inv(arr)
-    
+def rotate(model, array=None, alpha=None, beta=None, gamma=None, degree=True, invert=True):
+    if array is None:
+        if alpha is None or beta is None or gamma is None:
+            raise Exception("You must provide either an array or a set of angles: alpha, beta, gamma")
+        array = calculate_rotation_array(alpha, beta, gamma, degree=degree)
+
+    if type(array) == list:
+        array = np.array(array)
+    if array.shape == (9,):
+        array = array.reshape((3,3))
+    if invert:
+        array = np.linalg.inv(array)
+
     for i,atom in enumerate(model.atoms):
         old_coord = [atom.coord[0], atom.coord[1], atom.coord[2]]
-        new_coord = np.dot(np.asarray(old_coord), arr)
+        new_coord = np.dot(np.asarray(old_coord), array)
         atom.coord = (new_coord[0], new_coord[1], new_coord[2])
 
 
@@ -94,13 +100,15 @@ def rot_point(point, linepoint, unitvec, theta):
 
 
 def main():
+    from model import Model
     #print(rotate([[2,0,0],[0,1,0],[0,0,1]], 90, 'y'))
     #print(calc_rot_array_from_hkl(19,-24,28))
     modelfile = sys.argv[1]
     m = Model(modelfile)
-    rot_arr = calc_rot_array_from_hkl(41,60,-6)
-    rot(m,rot_arr)
-    m.write_real_xyz('temp.real.xyz')
+    #rot_arr = calc_rot_array_from_hkl(41,60,-6)
+    rot_arr = calculate_rotation_array(30, 60, 90)
+    rotate(m, rot_arr)
+    #m.write_real_xyz('temp.real.xyz')
     return
 
     # Below is a (the?) rotation matrix of Pei's t1 that gives some planes. Oriented for a specific plane ~.
