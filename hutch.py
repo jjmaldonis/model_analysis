@@ -33,7 +33,7 @@ class Hutch(object):
         # Put atoms into their correct hutch
         for atom in model.atoms:
             self.add_atom(atom)
-        self.check_hutches(model)
+        #self.check_hutches(model)
 
     @property
     def xsize(self):
