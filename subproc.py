@@ -1,10 +1,14 @@
-def run_subproc(args):
+import subprocess
+import shlex
+import sys
+import os
+
+
+def run_subproc(args, verbose=True):
     """ args should be the string that you would normally run from bash """
-    import subprocess
-    import shlex
-    import sys
     print("Running (via python): {0}".format(args))
     sargs = shlex.split(args)
+    #FNULL = open(os.devnull, 'w')
     p = subprocess.Popen(sargs, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output = []
     for nextline in iter(p.stdout.readline, ""):
@@ -19,10 +23,12 @@ def run_subproc(args):
         print("{0} failed: {1}".format(args,perr))
     return ''.join(output)
 
+
 def main():
     import sys
     command = ' '.join(sys.argv[1:])
     run_subproc(command)
+
 
 if __name__ == "__main__":
     main()

@@ -45,6 +45,14 @@ class Group(object):
             for cluster in self.clusters:
                 if cluster.successful and not counter[cluster.natoms]:
                     cluster.successful = False
+        self._combined = None
+        self._average = None
+
+    def __getitem__(self, key):
+        return self.clusters[key]
+
+    def __len__(self):
+        return self.nclusters
 
     @property
     def nclusters(self):
@@ -76,8 +84,11 @@ class Group(object):
         return self._natoms
 
 
-    def average_structure(self):
+    def average_structure(self, force_update=False):
         """ Calculates the atom positions of the average structure of the aligned clusters in the group. """
+        if not force_update and self._average is not None:
+            return self._average
+
         nsuccessful = sum(self.successful)
         avg_coords = [[0.0, 0.0, 0.0] for i in range(self.natoms)]
         for cluster in self.clusters:
@@ -89,19 +100,23 @@ class Group(object):
                 avg_coords[i][1] += atom.coord[1]/nsuccessful
                 avg_coords[i][2] += atom.coord[2]/nsuccessful
 
-        m = Cluster(center_included=False, comment='averaged structure', xsize=5.,ysize=5.,zsize=5., atoms=[Atom(i, 'Si', *coord) for i,coord in enumerate(avg_coords)])
+        m = Cluster(center_included=False, comment='averaged structure', xsize=100.,ysize=100.,zsize=100., atoms=[Atom(i, 'Si', *coord) for i,coord in enumerate(avg_coords)])
         m.add(Atom(m.natoms, 'Si', *[0., 0., 0.])) # Add a center atom at (0,0,0)
         m.center = m.atoms[-1]
         m.center.neighs = m.atoms[:-1]
         #m.rescale_bond_distances(3.5)
         VT.calculate_atom(m, atom=m.center, cutoff=max(m.dist(m.atoms[-1],atom) for atom in m.atoms[:-1])+0.1) #VP calculation
         #print("  Center atom's VP index is {0}".format(m.center.vp))
+        self._average = m
         return m
 
 
-    def combine(self, colorize=True):
+    def combine(self, colorize=True, force_update=False):
         """ Combines the group of aligned clusters into a single model. """
-        m = Model(comment='combined structures', xsize=5.,ysize=5.,zsize=5., atoms=[])
+        if not force_update and self._combined is not None:
+            return self._combined
+
+        m = Model(comment='combined structures', xsize=100.,ysize=100.,zsize=100., atoms=[])
         count = 0
         atom_types = ['Si', 'Na', 'Mg', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn', 'B', 'Al', 'Ga', 'C', 'Sn', 'Pb', 'O']
         for i,cluster in enumerate(self.clusters):
@@ -114,7 +129,18 @@ class Group(object):
                     new = Atom(count, 'Si', *atom.coord)
                 count += 1
                 m.add(new)
+        self._combined = m
         return m
+
+
+    @property
+    def site_occupancy(self):
+        """ """
+        c = Counter()
+        for a in self.clusters:
+            if not a.successful: continue
+            c += Counter(a.order)
+        return c
 
 
     def stdev(self, avg=None):
@@ -155,20 +181,20 @@ class Group(object):
 
 class AlignedData(object):
     """ This object takes in the data from the alignment procedure and provides functions to operate on that data. """
-    def __init__(self, data, reorder=False, comment=None):
+    def __init__(self, data, reorder=False, fix_pbcs=True, recenter=True, comment=None):
         # Add a center atom to self.model, self.target, and self.aligned_target at (0,0,0)
         self.comment = comment
         self.scale_factor = None
         if data.ind is not None:
             self.successful = True
-            self.model = Cluster(center_included=False, comment='data.model', xsize=5.,ysize=5.,zsize=5., atoms=[Atom(i, 'Si', *coord) for i,coord in enumerate(data.model)])
-            self.target = Cluster(center_included=False, comment='data.target', xsize=5.,ysize=5.,zsize=5., atoms=[Atom(i, 'Si', *coord) for i,coord in enumerate(data.target)])
+            self.model = Cluster(center_included=False, fix_pbcs=fix_pbcs, recenter=recenter, comment='data.model', xsize=100.,ysize=100.,zsize=100., atoms=[Atom(i, 'Si', *coord) for i,coord in enumerate(data.model)])
+            self.target = Cluster(center_included=False, fix_pbcs=fix_pbcs, recenter=recenter, comment='data.target', xsize=100.,ysize=100.,zsize=100., atoms=[Atom(i, 'Si', *coord) for i,coord in enumerate(data.target)])
             self.order = data.ind[0]
             self.rotation = data.transformation_R
-            self.translation = data.transformation_t
+            self.translation = data.transformation_t.T[0]
 
             if not reorder:
-                self.aligned_target = Cluster(center_included=False, comment='data.aligned_target', xsize=5.,ysize=5.,zsize=5., atoms=[Atom(i, 'Si', *coord) for i,coord in enumerate(data.aligned_target)])
+                self.aligned_target = Cluster(center_included=False, fix_pbcs=fix_pbcs, recenter=recenter, comment='data.aligned_target', xsize=100.,ysize=100.,zsize=100., atoms=[Atom(i, 'Si', *coord) for i,coord in enumerate(data.aligned_target)])
             else:
                 #print(self.order)
                 while max(self.order) > len(self.order)-1:
@@ -179,7 +205,7 @@ class AlignedData(object):
                         if x > i:
                             self.order[j] = x-1
                 self.order = [i+1 for i in self.order]
-                self.aligned_target = Cluster(center_included=False, comment='data.aligned_target', xsize=5.,ysize=5.,zsize=5., atoms=[Atom(i, 'Si', *coord) for i,coord in enumerate([data.aligned_target[j-1] for j in self.order])])
+                self.aligned_target = Cluster(center_included=False, fix_pbcs=fix_pbcs, recenter=recenter, comment='data.aligned_target', xsize=100.,ysize=100.,zsize=100., atoms=[Atom(i, 'Si', *coord) for i,coord in enumerate([data.aligned_target[j-1] for j in self.order])])
 
             self.error = data.error # L1-norm
         else:
@@ -196,12 +222,14 @@ class AlignedData(object):
 
 class Cluster(Model):
     """ An extension of Model that defines helper functions for small clusters. """
-    def __init__(self, center_included=True, **kwargs):
+    def __init__(self, center_included=True, fix_pbcs=True, recenter=True, **kwargs):
         super(Cluster, self).__init__(**kwargs) # Send input args to Model constructor
 
         # If we don't run these two lines first, self.find_center_atom() may return the incorrect atom!
-        self.fix_cluster_pbcs()
-        self.recenter()
+        if fix_pbcs:
+            self.fix_cluster_pbcs()
+        if recenter:
+            self.recenter()
 
         if center_included:
             # Remove the center atom and put it on the end (if it isn't already there)
@@ -215,35 +243,34 @@ class Cluster(Model):
 
 
     def fix_cluster_pbcs(self):
-        # First recenter to first octant
         self.recenter()
-        meanx, meany, meanz = self.xsize/4.0, self.ysize/4.0, self.zsize/4.0
-        for atom in self.atoms[1:]:
-            atom.coord = (atom.coord[0]+meanx-self.atoms[0].coord[0], atom.coord[1]+meany-self.atoms[0].coord[1], atom.coord[2]+meanz-self.atoms[0].coord[2])
-        self.atoms[0].coord = (self.atoms[0].coord[0]+meanx-self.atoms[0].coord[0], self.atoms[0].coord[1]+meany-self.atoms[0].coord[1], self.atoms[0].coord[2]+meanz-self.atoms[0].coord[2])
 
-        for atom in self.atoms:
-            new = []
-            if round(self.dist(self.atoms[0], atom)) != round(self.dist(self.atoms[0], atom, pbc=False)):
-                for c in atom.coord:
-                    if c < 0:
-                        new.append(c+self.xsize)
-                    elif c > self.xsize:
-                        new.append(c-self.xsize)
-                    else:
-                        new.append(c)
-                atom.coord = tuple(new)
+        # Move all the atoms on the - side to the + side if we need to fix the cluster
+        for atom1 in self.atoms:
+            for atom2 in self.atoms:
+                x = (atom1.coord[0] - atom2.coord[0])
+                y = (atom1.coord[1] - atom2.coord[1])
+                z = (atom1.coord[2] - atom2.coord[2])
+                if round(x/self.xsize) == -1:
+                    atom1.coord = (atom1.coord[0] +self.xsize, atom1.coord[1], atom1.coord[2])
+                if round(y/self.ysize) == -1:
+                    atom1.coord = (atom1.coord[0], atom1.coord[1] +self.ysize, atom1.coord[2])
+                if round(z/self.zsize) == -1:
+                    atom1.coord = (atom1.coord[0], atom1.coord[1], atom1.coord[2] +self.zsize)
+                dpbc = round(self.dist(atom1, atom2))
+                npbc = round(self.dist(atom1, atom2, pbc=False))
+
+        for atom1 in self.atoms:
+            for atom2 in self.atoms:
+                if dpbc != npbc:
+                    raise Exception("PBC fix failed!", dpbc, npbc)
+
         self.recenter()
         return self
 
 
     def rescale_bond_distances(self, avg):
         """ Rescales a cluster so that the average bond length is 'avg' """
-        current_avg = 1.0
-        for atom in self.atoms:
-            atom.coord = (atom.coord[0]/current_avg*avg, atom.coord[1]/current_avg*avg, atom.coord[2]/current_avg*avg)
-        return avg
-
         center = self.find_center_atom()
 
         # Place the center atom at (0,0,0) and move every other atom relative to that translation
