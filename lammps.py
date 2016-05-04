@@ -266,8 +266,7 @@ class LAMMPS:
         exitcode = lmp_handle.poll()
         if exitcode and exitcode != 0:
             cwd = os.getcwd()
-            raise RuntimeError('LAMMPS exited in %s with exit code: %d.' %\
-                                   (cwd,exitcode))
+            raise RuntimeError('LAMMPS exited in {} with exit code: {}.'.format(cwd, exitcode))
 
         # A few sanity checks
         if len(self.thermo_content) == 0:
@@ -277,7 +276,7 @@ class LAMMPS:
             raise RuntimeError('Atoms have gone missing')
 
 
-        self.read_lammps_trj(lammps_trj=lammps_trj)
+        self.read_lammps_trj(lammps_trj=lammps_trj, set_atoms=True)  # Changed from ASE version: Added `set_atoms=True`
         lammps_trj_fd.close()
         if not self.no_data_file:
             lammps_data_fd.close()
@@ -307,20 +306,20 @@ class LAMMPS:
 
         # Write variables
         f.write('clear\n' +
-                ('variable dump_file string "%s"\n' % lammps_trj) +
-                ('variable data_file string "%s"\n' % lammps_data))
+                'variable dump_file string "{}"\n'
+                'variable data_file string "{}"\n'.format(lammps_trj, lammps_data))
 
         parameters = self.parameters
         pbc = self.atoms.get_pbc()
         f.write('units metal \n')
         if ('boundary' in parameters):
-            f.write('boundary %s \n' % parameters['boundary'])
+            f.write('boundary {} \n'.format(parameters['boundary']))
         else:
-            f.write('boundary %c %c %c \n' % tuple('sp'[x] for x in pbc))
+            f.write('boundary {} {} {} \n'.format(*('sp'[x] for x in pbc)))
         f.write('atom_modify sort 0 0.0 \n')
         for key in ('neighbor' ,'newton'):
             if key in parameters:
-                f.write('%s %s \n' % (key, parameters[key]))
+                f.write('{} {} \n'.format(key, parameters[key]))
         f.write('\n')
 
 
@@ -329,20 +328,16 @@ class LAMMPS:
         if self.no_data_file:
             if self.keep_tmp_files:
                 f.write('## Original ase cell\n')
-                f.write(''.join(['# %.16f %.16f %.16f\n' % tuple(x)
-                                 for x in self.atoms.get_cell()]))
+                f.write(''.join(['# {.16} {.16} {.16}\n'.format(*x) for x in self.atoms.get_cell()]))
 
             p = self.prism
             f.write('lattice sc 1.0\n')
             xhi, yhi, zhi, xy, xz, yz = p.get_lammps_prism_str()
             if self.always_triclinic or p.is_skewed():
-                f.write('region asecell prism 0.0 %s 0.0 %s 0.0 %s ' % \
-                            (xhi, yhi, zhi))
-                f.write('%s %s %s side in units box\n' % \
-                            (xy, xz, yz))
+                f.write('region asecell prism 0.0 {} 0.0 {} 0.0 {} '.format(xhi, yhi, zhi))
+                 f.write('{} {} {} side in units box\n'.format(xy, xz, yz))
             else:
-                f.write(('region asecell block 0.0 %s 0.0 %s 0.0 %s '
-                         'side in units box\n') % (xhi, yhi, zhi))
+                f.write('region asecell block 0.0 {} 0.0 {} 0.0 {} side in units box\n'.format(xhi, yhi, zhi))
                     
             symbols = self.atoms.get_chemical_symbols()
             if self.specorder is None:
@@ -355,29 +350,28 @@ class LAMMPS:
             n_atom_types = len(species)
             species_i = dict([(s,i+1) for i,s in enumerate(species)])
 
-            f.write('create_box %i asecell\n' % n_atom_types)
+            f.write('create_box {} asecell\n'.format(n_atom_types))
             for s, pos in zip(symbols, self.atoms.get_positions()):
                 if self.keep_tmp_files:
-                    f.write('# atom pos in ase cell: %.16f %.16f %.16f\n' % tuple(pos))
-                f.write('create_atoms %i single %s %s %s units box\n' % \
-                            ((species_i[s],)+p.pos_to_lammps_fold_str(pos)))
+                    f.write('# atom pos in ase cell: {.16} {.16} {.16}\n'.format(*tuple(pos)))
+                f.write('create_atoms {} single {} {} {} units box\n'.format(*((species_i[s],)+p.pos_to_lammps_fold_str(pos))))
                 
 
         # if NOT self.no_lammps_data, then simply refer to the data-file
         else:
-            f.write('read_data %s\n' % lammps_data)
+            f.write('read_data {}\n'.format(lammps_data))
 
 
         # Write interaction stuff
         f.write('\n### interactions \n')
         if ( ('pair_style' in parameters) and ('pair_coeff' in parameters) ):
             pair_style = parameters['pair_style']
-            f.write('pair_style %s \n' % pair_style)
+            f.write('pair_style {} \n'.format(pair_style))
             for pair_coeff in parameters['pair_coeff']:
-                f.write('pair_coeff %s \n' % pair_coeff)
+                f.write('pair_coeff {} \n'.format(pair_coeff))
             if 'mass' in parameters:
                 for mass in parameters['mass']:
-                    f.write('mass %s \n' % mass)
+                    f.write('mass {} \n'.format(mass))
         else:
             # simple default parameters
             # that should always make the LAMMPS calculation run
@@ -447,18 +441,20 @@ class LAMMPS:
             lammps_trj = self.label + '.lammpstrj'
 
         f = paropen(lammps_trj, 'r')
+        nlines = 0
         while True:
             line = f.readline()
 
             if not line:
                 break
+            nlines += 1
 
             #TODO: extend to proper dealing with multiple steps in one trajectory file
             if 'ITEM: TIMESTEP' in line:
                 n_atoms = 0
                 lo = [] ; hi = [] ; tilt = []
                 id = [] ; type = []
-                positions = [] ; velocities = [] ; forces = []
+                positions = [] ; pea = [] ; velocities = [] ; forces = []
 
             if 'ITEM: NUMBER OF ATOMS' in line:
                 line = f.readline()
@@ -487,9 +483,13 @@ class LAMMPS:
                     id.append( int(fields[atom_attributes['id']]) )
                     type.append( int(fields[atom_attributes['type']]) )
                     positions.append( [ float(fields[atom_attributes[x]]) for x in ['x', 'y', 'z'] ] )
-                    velocities.append( [ float(fields[atom_attributes[x]]) for x in ['vx', 'vy', 'vz'] ] )
-                    forces.append( [ float(fields[atom_attributes[x]]) for x in ['fx', 'fy', 'fz'] ] )
+                    pea.append( [ float(fields[atom_attributes[x]]) for x in ['c_pea'] ] )
+                    #velocities.append( [ float(fields[atom_attributes[x]]) for x in ['vx', 'vy', 'vz'] ] )
+                    #forces.append( [ float(fields[atom_attributes[x]]) for x in ['fx', 'fy', 'fz'] ] )
         f.close()
+
+        if nlines==0:
+            raise RuntimeError('Failed to retreive any output from trajectory file: {0}\n'.format(lammps_trj))
 
         # determine cell tilt (triclinic case!)
         if (len(tilt) >= 3):
@@ -541,7 +541,7 @@ class LAMMPS:
         type_atoms = np.array(type)
 
         if self.atoms:
-            cell_atoms = self.atoms.get_cell()
+            #cell_atoms = self.atoms.get_cell()  # Changed from ASE version: commented
 
             # BEWARE: reconstructing the rotation from the LAMMPS output trajectory file
             #         fails in case of shrink wrapping for a non-periodic direction
@@ -551,12 +551,13 @@ class LAMMPS:
 
             type_atoms = self.atoms.get_atomic_numbers()
             positions_atoms = np.array( [np.dot(np.array(r), rotation_lammps2ase) for r in positions] )
-            # velocities_atoms = np.array( [np.dot(np.array(v), rotation_lammps2ase) for v in velocities] )
-            forces_atoms = np.array( [np.dot(np.array(f), rotation_lammps2ase) for f in forces] )
+            #velocities_atoms = np.array( [np.dot(np.array(v), rotation_lammps2ase) for v in velocities] )
+            #forces_atoms = np.array( [np.dot(np.array(f), rotation_lammps2ase) for f in forces] )
 
         if (set_atoms):
             # assume periodic boundary conditions here (like also below in write_lammps)
             self.atoms = Atoms(type_atoms, positions=positions_atoms, cell=cell_atoms)
+            self.pea = pea
 
         self.forces = forces_atoms
 
@@ -718,11 +719,11 @@ def write_lammps_data(fileobj, atoms, specorder=None, force_skew=False,
             raise ValueError('Can only write one configuration to a lammps data file!')
         atoms = atoms[0]
 
-    f.write(f.name + ' (written by ASE) \n\n')
+    f.write('{} (written by ASE) \n\n'.format(f.name))
 
     symbols = atoms.get_chemical_symbols()
     n_atoms = len(symbols)
-    f.write('%d \t atoms \n' % n_atoms)
+    f.write('{} \t atoms \n'.format(n_atoms))
 
     if specorder is None:
         # This way it is assured that LAMMPS atom types are always
@@ -733,7 +734,7 @@ def write_lammps_data(fileobj, atoms, specorder=None, force_skew=False,
         # (indices must correspond to order in the potential file)
         species = specorder
     n_atom_types = len(species)
-    f.write('%d  atom types\n' % n_atom_types)
+    f.write('{}  atom types\n'.format(n_atom_types))
 
     if prismobj is None:
         p = prism(atoms.get_cell())
@@ -741,24 +742,24 @@ def write_lammps_data(fileobj, atoms, specorder=None, force_skew=False,
         p = prismobj
     xhi, yhi, zhi, xy, xz, yz = p.get_lammps_prism_str()
 
-    f.write('0.0 %s  xlo xhi\n' % xhi)
-    f.write('0.0 %s  ylo yhi\n' % yhi)
-    f.write('0.0 %s  zlo zhi\n' % zhi)
+    f.write('0.0 {}  xlo xhi\n'.format(xhi))
+    f.write('0.0 {}  ylo yhi\n'.format(yhi))
+    f.write('0.0 {}  zlo zhi\n'.format(zhi))
     
     if force_skew or p.is_skewed():
-        f.write('%s %s %s  xy xz yz\n' % (xy, xz, yz))
+        f.write('{} {} {}  xy xz yz\n'.format(xy, xz, yz))
     f.write('\n\n')
 
     f.write('Atoms \n\n')
     for i, r in enumerate(map(p.pos_to_lammps_str,
                               atoms.get_positions())):
         s = species.index(symbols[i]) + 1
-        f.write('%6d %3d %s %s %s\n' % ((i+1, s)+tuple(r)))
+        f.write('{:>6} {:>3} {} {} {}\n'.format(*(i+1, s)+tuple(r)))
 
     if velocities and atoms.get_velocities() is not None:
         f.write('\n\nVelocities \n\n')
         for i, v in enumerate(atoms.get_velocities()):
-            f.write('%6d %s %s %s\n' % ((i+1,)+tuple(v)))
+            f.write('{:>6} {} {} {}\n'.format(*(i+1,)+tuple(v)))
     
     if close_file:
         f.close()
