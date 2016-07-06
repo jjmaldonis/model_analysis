@@ -51,7 +51,7 @@ class Hutch(object):
             hutch = self._get_hutch(atom)
             if atom not in self.hutchs[hutch]:
                 raise Exception("You have an error in your hutches!")
-    
+
     def add_hutch(self,hutch):
         if hutch in self.hutchs:
             raise Exception("Trying to create a hutch that already exists: {0}".format(hutch))
