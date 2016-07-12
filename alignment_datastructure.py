@@ -1,6 +1,7 @@
 import os
 import math
 import numpy as np
+import scipy.spatial.distance
 from collections import Counter
 import warnings
 
@@ -25,8 +26,8 @@ def load_alignment_data(all_data, prepend_path=''):
 
         new_data[i] = AlignedData(
             R=data['R'], T=data['T'], mapping=data['mapping'], inverted=data['inverted'], error=data['error_lsq'], swapped=data['swapped'],
-            model_file=model_file, model_coords=model_coords, model_symbols=None,
-            target_file=target_file, target_coords=target_coords, target_symbols=None,
+            model_file=model_file, model_coords=model_coords, model_symbols=None, model_scale=data['model_rescale'],
+            target_file=target_file, target_coords=target_coords, target_symbols=None, target_scale=data['target_rescale'],
             aligned_target_coords=data['aligned_target'], aligned_target_symbols=None
         )
     new_data = AlignedGroup(new_data)
@@ -132,8 +133,8 @@ class AlignedGroup(object):
 
 class AlignedData(object):
     def __init__(self, R, T, mapping, error, inverted, swapped=None,
-                 model_file=None, model_coords=None, model_symbols=None,
-                 target_file=None, target_coords=None, target_symbols=None,
+                 model_file=None, model_coords=None, model_symbols=None, model_scale=1.0,
+                 target_file=None, target_coords=None, target_symbols=None, target_scale=1.0,
                  aligned_target_coords=None, aligned_target_symbols=None):
         """
              model_file OR (model_coords AND model_symbols)
@@ -148,6 +149,8 @@ class AlignedData(object):
 
         self._inverted = inverted
         self._swapped = swapped
+        self.model_scale = model_scale
+        self.target_scale = target_scale
 
         self._model_symbols = model_symbols
         self._model = np.matrix(model_coords) if model_coords else None
@@ -238,12 +241,20 @@ class AlignedData(object):
     def aligned_model(self):
         """Returns the model coordinates that were used during alignment to compare to the rotated/translated target."""
         included = np.array([i for i in range(np.amax(self.mapping)+1) if i in self.mapping])
+        indices = np.argsort(self.mapping)
         if self.swapped:
-            #model = self.model.positions[included]
-            model = self.target.positions[included]
+            #model = self.target.positions.copy()
+            #model = self.target.positions[self.mapping].copy()
+            model = self.target.positions[included].copy()
+            #model = self.target.positions[indices].copy()
+            scale = self.target_scale
         else:
-            #model = self.target.positions[included]
-            model = self.model.positions[included]
+            #model = self.model.positions.copy()
+            #model = self.model.positions[self.mapping].copy()
+            model = self.model.positions[included].copy()
+            #model = self.model.positions[indices].copy()
+            scale = self.model_scale
+        Cluster._rescale_coordinates(model, 1.0/scale)
         if self.inverted:
             model = -model
         return model
@@ -251,12 +262,13 @@ class AlignedData(object):
 
     @property
     def aligned_target_symbols(self):
+        indices = np.argsort(self.mapping)
         if self._aligned_target_symbols is not None:
             return self._aligned_target_symbols
         elif hasattr(self, '_target_symbols') and self._target_symbols is not None:
-            return list(np.array(self._target_symbols)[np.array(self.mapping)])
+            return list(np.array(self._target_symbols)[indices])
         else:
-            return list(np.array(self.target.symbols)[np.array(self.mapping)])
+            return list(np.array(self.target.symbols)[indices])
 
     @lazyproperty
     def aligned_target(self):
@@ -283,23 +295,26 @@ class AlignedData(object):
         if swapped is None:
             swapped = self.swapped
         if not swapped:
-            #target = self.model.positions
-            #target = self.model.positions[included]  # I expected this one to be the one we needed to use, but evidently not...?
-            #target = self.model.positions[indices]  # Use this one
-            #target = self.model.positions[self.mapping]
-            if apply_mapping:
-                target = self.target.positions[indices]
-            else:
-                target = self.target.positions
-        else:
             #target = self.target.positions
             #target = self.target.positions[included]  # I expected this one to be the one we needed to use, but evidently not...?
             #target = self.target.positions[indices]  # Use this one
             #target = self.target.positions[self.mapping]
             if apply_mapping:
+                target = self.target.positions[indices]
+            else:
+                target = self.target.positions
+            scale = self.target_scale
+        else:
+            #target = self.model.positions
+            #target = self.model.positions[included]  # I expected this one to be the one we needed to use, but evidently not...?
+            #target = self.model.positions[indices]  # Use this one
+            #target = self.model.positions[self.mapping]
+            if apply_mapping:
                 target = self.model.positions[indices]
             else:
                 target = self.model.positions
+            scale = self.model_scale
+        target /= scale
         return (self.R * target.T).T + np.tile((self.T), [target.shape[0], 1])
 
 
@@ -353,6 +368,9 @@ class AlignedData(object):
 
     def LinfNorm(self):
         return Cluster._LinfNorm(self.aligned_model, self.aligned_target.positions)
+
+    def angular_variation(self, neighbor_cutoff):
+        return Cluster._angular_variation(self.aligned_model, self.aligned_target.positions, neighbor_cutoff)
 
 
 
@@ -435,6 +453,26 @@ class Cluster(object):
 
 
     @staticmethod
+    def _rescale_coordinates(coordinates, scale):
+        coordinates *= scale
+
+
+    def rescale_edge_lengths(self, avg_edge_len, verbose=False):
+        pdists = scipy.spatial.distance.pdist(coordinates)
+        mean = np.mean(pdists)
+        Cluster._rescale_coordinates(self._positions, 1.0/mean*avg_edge_len)
+        if verbose:
+            print("Rescaled by {}".format(scale))
+        return scale
+
+
+    def normalize_edge_lengths(self, verbose=False):
+        pdists = scipy.spatial.distance.pdist(coordinates)
+        mean = np.mean(pdists)
+        return self.rescale_edge_lengths(1.0/mean, verbose)
+
+
+    @staticmethod
     def _L2Norm(c1, c2):
         assert len(c1) == len(c2)
         L2 = 0.0
@@ -474,6 +512,58 @@ class Cluster(object):
                         abs(c1[i,1] - c2[i,1]) +
                         abs(c1[i,2] - c2[i,2]))
         return max(Linf)/len(c1)
+
+
+    @staticmethod
+    def _angle(a, b, c):
+        a = np.array(a)
+        b = np.array(b)
+        c = np.array(c)
+        ba = a - b
+        bc = c - b
+        if (ba == bc).all():
+            return 0.0
+        cosine_angle = np.dot(ba, bc) / (np.linalg.norm(ba) * np.linalg.norm(bc))
+        angle = np.arccos(cosine_angle)
+        return np.degrees(angle)
+
+
+    @staticmethod
+    def _angular_variation(c1, c2, neighbor_cutoff):
+        """This is a measure of the angular variation between the two clusters.
+        Calculates Mean( abs(Delta(angle btwn all atoms and their neighbors, going through the center)) ).
+        Both clusters must have had their center removed.
+        Both clusters are assumed to have had their center at (0,0,0) before removal.
+        Both cluster must have been reordered so that self[i] corresponds directly to other[i]."""
+
+        #if c1.center_atom is not None or c2.center_atom is not None:
+        #    raise NotImplementedError("The centers must be removed to use this method. It's also necessary that the cluster is recentered so that the center atom was at (0,0,0) before running this method.")
+        natoms = min(len(c1), len(c2))
+
+        # Generate neighbors using pdist and the array for both c1 and c2
+        print((scipy.spatial.distance.pdist(c1) + scipy.spatial.distance.pdist(c2)) /2.0)
+        c1_dist_matrix = scipy.spatial.distance.squareform(scipy.spatial.distance.pdist(c1))
+        c2_dist_matrix = scipy.spatial.distance.squareform(scipy.spatial.distance.pdist(c2))
+        dist_matrix = (c1_dist_matrix + c2_dist_matrix) / 2.0  # Calculate the average atom-to-atom distances
+        neighbors = []
+        for index, x in np.ndenumerate(dist_matrix):
+            if x < neighbor_cutoff:
+                neighbors.append(index)
+
+        # Use those neighbors to calculate angles for c1 and c2 simultaneously, and calculate abs(Delta(angles))
+        # Also calculate and return the mean
+        mean = 0.
+        for neighbor_pair in neighbors:
+            i,j = neighbor_pair
+            xi1,yi1,zi1 = c1[i,0], c1[i,1], c1[i,2]
+            xi2,yi2,zi2 = c2[i,0], c2[i,1], c2[i,2]
+            xj1,yj1,zj1 = c1[j,0], c1[j,1], c1[j,2]
+            xj2,yj2,zj2 = c2[j,0], c2[j,1], c2[j,2]
+            a1 = Cluster._angle((xi1,yi1,zi1), (0,0,0), (xj1,yj1,zj1))
+            a2 = Cluster._angle((xi2,yi2,zi2), (0,0,0), (xj2,yj2,zj2))
+            mean += abs(a1-a2)
+        mean /= len(neighbors)
+        return mean
 
 
 
