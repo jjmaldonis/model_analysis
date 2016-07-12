@@ -541,7 +541,6 @@ class Cluster(object):
         natoms = min(len(c1), len(c2))
 
         # Generate neighbors using pdist and the array for both c1 and c2
-        print((scipy.spatial.distance.pdist(c1) + scipy.spatial.distance.pdist(c2)) /2.0)
         c1_dist_matrix = scipy.spatial.distance.squareform(scipy.spatial.distance.pdist(c1))
         c2_dist_matrix = scipy.spatial.distance.squareform(scipy.spatial.distance.pdist(c2))
         dist_matrix = (c1_dist_matrix + c2_dist_matrix) / 2.0  # Calculate the average atom-to-atom distances
