@@ -8,17 +8,20 @@ import warnings
 from lazy_property import lazyproperty
 
 
-def load_alignment_data(all_data, prepend_path=''):
+def load_alignment_data(all_data, prepend_path='', prepend_model_path='', prepend_target_path=''):
+    if prepend_path:
+        prepend_model_path = prepend_path
+        prepend_target_path = prepend_path
     new_data = [None for _ in range(len(all_data))]
     for i, data in enumerate(all_data):
         if isinstance(data['model'], str) or isinstance(data['model'], unicode):
-            model_file = os.path.join(prepend_path, data['model'])
+            model_file = os.path.join(prepend_model_path, data['model'])
             model_coords = None
         else:
             model_file = None
             model_coords = data['model']
         if isinstance(data['target'], str) or isinstance(data['target'], unicode):
-            target_file = os.path.join(prepend_path, data['target'])
+            target_file = os.path.join(prepend_target_path, data['target'])
             target_coords = None
         else:
             target_file = None
@@ -450,6 +453,11 @@ class Cluster(object):
                 of.write(line)
             of.close()
         return ''.join(lines)
+
+
+    def vp_index(self):
+        from voropp import compute_index
+        return compute_index(self.filename)
 
 
     @staticmethod
