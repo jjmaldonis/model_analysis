@@ -70,67 +70,56 @@ class AlignedGroup(object):
         return np.array( [ [a.coord[0], a.coord[1], a.coord[2]] for a in cluster.atoms for cluster in self.clusters] ).T
 
 
-    @property
-    def natoms(self):
-        """ Returns the (most common) number of atoms in the aligned clusters."""
-        if self._natoms is None:
-            # Check to see if every atom has the same number of atoms
-            counter = Counter(datum.aligned_target.natoms for datum in self.data if datum.successful)
-            self._natoms = counter.most_common(1)[0][0]
-            if len(counter) != 1:
-                warnings.warn("Not all clusters in this group have the same number of atoms. {0}\n  Ignoring those that comprise < 1% of the total.".format(counter), RuntimeWarning)
-                total = sum(val for k,val in counter.items())
-                for k,v in counter.items():
-                    if v/float(total) < 0.01: counter[k] = False
-        return self._natoms
-
-
     def average_structure(self, force_update=False):
         """ Calculates the atom positions of the average structure of the aligned clusters in the group. """
         if not force_update and hasattr(self, '_average') and self._average is not None:
             return self._average
 
         nsuccessful = sum(self.successful)
-        avg_coords = np.zeros((self.natoms, 3), dtype=float)
+        #avg_coords = np.zeros((self.natoms, 3), dtype=float)
+        natoms = self[0].aligned_target.natoms
+        avg_coords = np.zeros((natoms, 3), dtype=float)
         for aligned in self.data:
             if not aligned.successful: continue
-            positions = aligned.aligned_target.positions#[aligned.mapping]
-            if aligned.inverted:
-                positions = positions * -1
-            #print(positions[0])
+            if not aligned.swapped: continue
+            positions = aligned.aligned_target.positions
+            #if aligned.inverted:
+            #    positions = positions * -1
+            print(positions)
             for i, position in enumerate(positions):
                 avg_coords[i,0] += position[0,0]/nsuccessful
                 avg_coords[i,1] += position[0,1]/nsuccessful
                 avg_coords[i,2] += position[0,2]/nsuccessful
 
-        self._average = Cluster(symbols=['Si' for i in range(self.natoms)], positions=avg_coords)
+        self._average = Cluster(symbols=['Si' for i in range(natoms)], positions=avg_coords)
         return self._average
 
 
     def combine(self, colorize=True, force_update=False):
         """ Combines the group of aligned clusters into a single model. """
-        pass
-        """
-        if not force_update and self._combined is not None:
+        if not force_update and hasattr(self, '_combined') and self._combined is not None:
             return self._combined
 
-        m = Model(comment='combined structures', xsize=100.,ysize=100.,zsize=100., atoms=[])
-        count = 0
         atom_types = ['Si', 'Na', 'Mg', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn', 'B', 'Al', 'Ga', 'C', 'Sn', 'Pb', 'O']
-        for i,cluster in enumerate(self.clusters):
-            if not cluster.successful: continue
-            for j,atom in enumerate(cluster.aligned_target):
-                if j == len(cluster.aligned_target.atoms): break
-                if colorize:
-                    new = Atom(count, atom_types[j], *atom.coord)
-                else:
-                    new = Atom(count, 'Si', *atom.coord)
-                count += 1
-                m.add(new)
-        self._combined = m
-        return m
-        """
-        pass
+
+        nsuccessful = sum(self.successful)
+        coords = []
+        for aligned in self.data:
+            if not aligned.successful: continue
+            if not aligned.swapped: continue
+            positions = aligned.aligned_target.positions#[aligned.mapping]
+            if aligned.inverted:
+                positions = positions * -1
+            for j, coord in enumerate(positions):
+                coords.append((atom_types[j], coord))
+
+        if colorize:
+            symbols = [sym for sym, coord in coords]
+        else:
+            symbols = ['Si' for sym, coord in coords]
+        coords = np.array([coord for sym, coord in coords])
+        self._combined = Cluster(symbols=['Si' for i in range(len(coords))], positions=coords)
+        return self._combined
 
 
 
@@ -208,15 +197,8 @@ class AlignedData(object):
             del self._model
             del self._model_symbols
         else:
-            #print("Loading model from file {}".format(self._model_file))
             c = Cluster(filename=self._model_file)
             del self._model_file
-        #self._len_model_positions = len(c.positions)
-        #if not hasattr(self, '_len_target_positions'):
-        #    self.target
-        #swapped = len(c.positions) < self._len_target_positions
-        #if swapped and self.inverted:
-        #    c._positions = -c._positions
         return c
 
 
@@ -228,15 +210,8 @@ class AlignedData(object):
             del self._target
             del self._target_symbols
         else:
-            #print("Loading target from file {}".format(self._target_file))
             c = Cluster(filename=self._target_file)
             del self._target_file
-        #self._len_target_positions = len(c.positions)
-        #if not hasattr(self, '_len_model_positions'):
-        #    self.model
-        #swapped = self._len_model_positions < len(c.positions)
-        #if swapped and self.inverted:
-        #    c._positions = -c._positions
         return c
 
 
@@ -244,7 +219,7 @@ class AlignedData(object):
     def aligned_model(self):
         """Returns the model coordinates that were used during alignment to compare to the rotated/translated target."""
         included = np.array([i for i in range(np.amax(self.mapping)+1) if i in self.mapping])
-        indices = np.argsort(self.mapping)
+        #indices = np.argsort(self.mapping)
         if self.swapped:
             #model = self.target.positions.copy()
             #model = self.target.positions[self.mapping].copy()
@@ -257,7 +232,7 @@ class AlignedData(object):
             model = self.model.positions[included].copy()
             #model = self.model.positions[indices].copy()
             scale = self.model_scale
-        Cluster._rescale_coordinates(model, 1.0/scale)
+        model = Cluster._rescale_coordinates(model, 1.0/scale)
         if self.inverted:
             model = -model
         return model
@@ -273,6 +248,7 @@ class AlignedData(object):
         else:
             return list(np.array(self.target.symbols)[indices])
 
+
     @lazyproperty
     def aligned_target(self):
         # The coordinates from the aligned_target have been reorderd already, but the target has not been.
@@ -285,7 +261,7 @@ class AlignedData(object):
         return c
 
 
-    def align_target(self, swapped=None, apply_mapping=True):
+    def align_target(self, rescale=True, apply_mapping=True):
         # I don't fully understand why I need to use [indices] rather than [included] here.
         # I expected that the input data for the aligned_target coordinates have already been reorderd.
         # I unorder them, however, when I load initialize the datastructure.
@@ -295,17 +271,15 @@ class AlignedData(object):
 
         #included = np.array([i for i in range(np.amax(self.mapping)+1) if i in self.mapping])
         indices = np.argsort(self.mapping)
-        if swapped is None:
-            swapped = self.swapped
-        if not swapped:
+        if not self.swapped:
             #target = self.target.positions
             #target = self.target.positions[included]  # I expected this one to be the one we needed to use, but evidently not...?
             #target = self.target.positions[indices]  # Use this one
             #target = self.target.positions[self.mapping]
             if apply_mapping:
-                target = self.target.positions[indices]
+                target = self.target.positions[indices].copy()
             else:
-                target = self.target.positions
+                target = self.target.positions.copy()
             scale = self.target_scale
         else:
             #target = self.model.positions
@@ -313,12 +287,52 @@ class AlignedData(object):
             #target = self.model.positions[indices]  # Use this one
             #target = self.model.positions[self.mapping]
             if apply_mapping:
-                target = self.model.positions[indices]
+                target = self.model.positions[indices].copy()
             else:
-                target = self.model.positions
+                target = self.model.positions.copy()
             scale = self.model_scale
-        target /= scale
+        if rescale:
+            target /= scale
         return (self.R * target.T).T + np.tile((self.T), [target.shape[0], 1])
+
+
+    # Either rotate_target_onto_model or rotate_model_onto_target will reproduce aligned_target.
+    # It depends on whether swapped is true or false
+    # if not swapped (which is equivalent to swapped is False) then use rotate_target_onto_model
+    # if swapped, then use rotate_model_onto_target to reproduce aligned_target
+
+    def rotate_target_onto_model(self, rescale=True, apply_mapping=True):
+        target = self.target.positions.copy()
+        if rescale:
+            target /= self.target_scale
+        if apply_mapping:
+            included = np.array([i for i in range(np.amax(self.mapping)+1) if i in self.mapping])
+            indices = np.argsort(self.mapping)
+            target = target[indices]
+        if not self.swapped:
+            R = self.R
+            T = self.T
+        else:
+            R = np.linalg.inv(self.R)
+            T = -self.T
+        return (R * target.T).T + np.tile(T, [target.shape[0], 1])
+
+
+    def rotate_model_onto_target(self, rescale=True, apply_mapping=True):
+        model = self.model.positions.copy()
+        if rescale:
+            model /= self.model_scale
+        if apply_mapping:
+            included = np.array([i for i in range(np.amax(self.mapping)+1) if i in self.mapping])
+            indices = np.argsort(self.mapping)
+            model = model[indices]
+        if not self.swapped:
+            R = np.linalg.inv(self.R)
+            T = -self.T
+        else:
+            R = self.R
+            T = self.T
+        return (R * model.T).T + np.tile(T, [model.shape[0], 1])
 
 
     def to_dict(self):
@@ -383,13 +397,13 @@ class Cluster(object):
         if filename is None:
             assert len(symbols) == len(positions)
             self._positions = np.matrix(positions).copy()
-            self.natoms = len(symbols)
+            self._natoms = len(symbols)
             self.atoms = [Atom(symbol=symbol, position=position, id=i) for i,(symbol,position) in enumerate(zip(symbols, self._positions))]
             self.rescaling_constant = rescaling_constant
             self.center_atom = center_atom
         else:
             with open(filename) as f:
-                self.natoms = int(f.readline().strip())
+                self._natoms = int(f.readline().strip())
                 self.comment = f.readline().strip()
                 self._positions = np.matrix(np.zeros((self.natoms, 3), dtype=float))
                 self.atoms = []
@@ -413,6 +427,11 @@ class Cluster(object):
     @property
     def symbols(self):
         return [atom.symbol for atom in self]
+
+
+    @property
+    def natoms(self):
+        return self._natoms #len(self.positions)
 
 
     @property
@@ -462,20 +481,17 @@ class Cluster(object):
 
     @staticmethod
     def _rescale_coordinates(coordinates, scale):
-        coordinates *= scale
+        return coordinates * scale
 
 
-    def rescale_edge_lengths(self, avg_edge_len, verbose=False):
-        pdists = scipy.spatial.distance.pdist(coordinates)
-        mean = np.mean(pdists)
-        Cluster._rescale_coordinates(self._positions, 1.0/mean*avg_edge_len)
+    def rescale_edge_lengths(self, scale, verbose=False):
         if verbose:
             print("Rescaled by {}".format(scale))
-        return scale
+        return Cluster._rescale_coordinates(self.positions, scale)
 
 
     def normalize_edge_lengths(self, verbose=False):
-        pdists = scipy.spatial.distance.pdist(coordinates)
+        pdists = scipy.spatial.distance.pdist(self.positions)
         mean = np.mean(pdists)
         return self.rescale_edge_lengths(1.0/mean, verbose)
 
