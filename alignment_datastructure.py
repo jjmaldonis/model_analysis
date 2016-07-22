@@ -17,8 +17,11 @@ class Positions(np.matrix):
         assert isinstance(self, Positions)
 
 
-    def apply_transformation(self, R, T):
-        this = (R * self.T).T + np.tile(T, [self.shape[0], 1])
+    def apply_transformation(self, R, T, invert=False):
+        if not invert:
+            this = (R * self.transpose()).transpose() + np.tile(T, [self.shape[0], 1])
+        else:
+            this = (R * (self + np.tile(T, [self.shape[0], 1])).transpose()).transpose()
         return this.view(Positions)
 
 
@@ -343,26 +346,26 @@ class AlignedData(object):
     def rotate_target_onto_model(self, rescale=True, apply_mapping=True):
         included = np.array([i for i in range(np.amax(self.mapping)+1) if i in self.mapping])
         indices = np.argsort(self.mapping)
-        ordered_included = np.array([len(np.where(self.mapping < i)[0]) for i in self.mapping])  # Keep the same order as self.mapping
 
         # Rescale, apply mapping to, and tranform the target
         if rescale:
             target = self.target.rescale_edge_lengths(1.0/self.target_scale)
         else:
             target = self.target.positions.copy()
-        if self.inverted:
-            target = -target
         if not self.swapped:
             if apply_mapping:
                 target = target[indices]
             R = self.R
             T = self.T
+            target = target.apply_transformation(R,T, invert=False)
         else:
+            if self.inverted:
+                target = -target
             if apply_mapping:
                 target = target[self.mapping]
             R = np.linalg.inv(self.R)
             T = -self.T
-        target = target.apply_transformation(R,T)
+            target = target.apply_transformation(R,T, invert=True)
 
         # Rescale and apply mapping to the model
         if rescale:
@@ -370,6 +373,8 @@ class AlignedData(object):
         else:
             model = self.model.positions.copy()
         if not self.swapped:
+            if self.inverted:
+                model = -model
             # This is weird; we want to include all the atoms even though in this case there are more
             # atoms in the model and the target. However, only some of the atoms in the model were
             # mapped to the target, so in order to color-compare the atoms between the targe and model,
@@ -387,26 +392,26 @@ class AlignedData(object):
     def rotate_model_onto_target(self, rescale=True, apply_mapping=True):
         included = np.array([i for i in range(np.amax(self.mapping)+1) if i in self.mapping])
         indices = np.argsort(self.mapping)
-        #ordered_included = np.array([len(np.where(self.mapping < i)[0]) for i in self.mapping])  # Keep the same order as self.mapping
 
         # Rescale, apply mapping to, and tranform the model
         if rescale:
             model = self.model.rescale_edge_lengths(1.0/self.model_scale)
         else:
             model = self.model.positions.copy()
-        if self.inverted:
-            model = -model
         if not self.swapped:
+            if self.inverted:
+                model = -model
             if apply_mapping:
                 model = model[self.mapping]
             R = np.linalg.inv(self.R)
             T = -self.T
+            model = model.apply_transformation(R,T, invert=True)
         else:
             if apply_mapping:
                 model = model[indices]
             R = self.R
             T = self.T
-        model = model.apply_transformation(R,T)
+            model = model.apply_transformation(R,T, invert=False)
 
         # Rescale and apply mapping to the target
         if rescale:
@@ -416,6 +421,8 @@ class AlignedData(object):
         if not self.swapped:
             target = target
         else:
+            if self.inverted:
+                target = -target
             # This is weird; we want to include all the atoms even though in this case there are more
             # atoms in the model and the target. However, only some of the atoms in the model were
             # mapped to the target, so in order to color-compare the atoms between the targe and model,
