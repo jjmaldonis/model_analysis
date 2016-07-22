@@ -8,6 +8,40 @@ import warnings
 from lazy_property import lazyproperty
 
 
+class Positions(np.matrix):
+    atom_types = ['Si', 'Na', 'Mg', 'Ti', 'V', 'Be', 'Mn', 'Fe', 'P', 'Ni', 'Cu', 'S', 'B', 'He', 'Ga', 'C', 'Sn', 'Pb', 'O']
+
+    def __init__(self, *args, **kwargs):
+        super(Positions, self).__init__(*args, **kwargs)
+        self = self.view(Positions)
+        assert isinstance(self, Positions)
+
+
+    def apply_transformation(self, R, T):
+        this = (R * self.T).T + np.tile(T, [self.shape[0], 1])
+        return this.view(Positions)
+
+
+    def to_xyz(self, sym='Si', comment=''):
+        lines = []
+        natoms = len(self)
+        lines.append(str(natoms))
+        lines.append(comment)
+        for row in self:
+            lines.append('{} {} {} {}'.format(sym, row[0], row[1], row[2]))
+        return '\n'.join(lines)
+
+
+    def to_colorized_xyz(self, comment=''):
+        lines = []
+        natoms = len(self)
+        lines.append(str(natoms))
+        lines.append(comment)
+        for i, row in enumerate(self):
+            lines.append('{} {} {} {}'.format(Positions.atom_types[i], row[0,0], row[0,1], row[0,2]))
+        return '\n'.join(lines)
+
+
 def load_alignment_data(all_data, prepend_path='', prepend_model_path='', prepend_target_path=''):
     if prepend_path:
         prepend_model_path = prepend_path
@@ -67,7 +101,7 @@ class AlignedGroup(object):
     @property
     def coordinates(self):
         """ A numpy array of shape (3, nclusters) with the coordination positions of each atom for each cluster. """
-        return np.array( [ [a.coord[0], a.coord[1], a.coord[2]] for a in cluster.atoms for cluster in self.clusters] ).T
+        return Positions( [ [a.coord[0], a.coord[1], a.coord[2]] for a in cluster.atoms for cluster in self.clusters] ).T
 
 
     def average_structure(self, force_update=False):
@@ -76,20 +110,25 @@ class AlignedGroup(object):
             return self._average
 
         nsuccessful = sum(self.successful)
-        #avg_coords = np.zeros((self.natoms, 3), dtype=float)
-        natoms = self[0].aligned_target.natoms
+        natoms = np.max([a.target.natoms for a in self])
         avg_coords = np.zeros((natoms, 3), dtype=float)
+        natoms_per_index = np.zeros((natoms,), dtype=int)
         for aligned in self.data:
             if not aligned.successful: continue
             if not aligned.swapped: continue
-            positions = aligned.aligned_target.positions
+            #positions = aligned.aligned_target.positions
+            target, model = aligned.rotate_target_onto_model(apply_mapping=True)
             #if aligned.inverted:
             #    positions = positions * -1
             print(positions)
             for i, position in enumerate(positions):
-                avg_coords[i,0] += position[0,0]/nsuccessful
-                avg_coords[i,1] += position[0,1]/nsuccessful
-                avg_coords[i,2] += position[0,2]/nsuccessful
+                avg_coords[i,0] += position[0,0]#/nsuccessful
+                avg_coords[i,1] += position[0,1]#/nsuccessful
+                avg_coords[i,2] += position[0,2]#/nsuccessful
+                natoms_per_index[i] += 1
+        print(natoms_per_index)
+        for i, row in enumerate(avg_coords):
+            row /= natoms_per_index[i]  # This modifies in-place
 
         self._average = Cluster(symbols=['Si' for i in range(natoms)], positions=avg_coords)
         return self._average
@@ -117,7 +156,7 @@ class AlignedGroup(object):
             symbols = [sym for sym, coord in coords]
         else:
             symbols = ['Si' for sym, coord in coords]
-        coords = np.array([coord for sym, coord in coords])
+        coords = Positions([coord for sym, coord in coords])
         self._combined = Cluster(symbols=['Si' for i in range(len(coords))], positions=coords)
         return self._combined
 
@@ -145,21 +184,21 @@ class AlignedData(object):
         self.target_scale = target_scale
 
         self._model_symbols = model_symbols
-        self._model = np.matrix(model_coords) if model_coords else None
+        self._model = Positions(model_coords) if model_coords else None
         if model_file is None and self._model is not None and len(self._model) == 3:
             self._model = self._model.T
         else:
             self._model_file = model_file
 
         self._target_symbols = target_symbols
-        self._target = np.matrix(target_coords) if target_coords else None
+        self._target = Positions(target_coords) if target_coords else None
         if target_file is None and self._target is not None and len(self._target) == 3:
             self._target = self._target.T
         else:
             self._target_file = target_file
 
         self._aligned_target_symbols = aligned_target_symbols
-        self._aligned_target = np.matrix(aligned_target_coords)
+        self._aligned_target = Positions(aligned_target_coords)
         if len(self._aligned_target) == 3:
             self._aligned_target = self._aligned_target.T
 
@@ -293,7 +332,7 @@ class AlignedData(object):
             scale = self.model_scale
         if rescale:
             target /= scale
-        return (self.R * target.T).T + np.tile((self.T), [target.shape[0], 1])
+        return target.apply_transformation(self.R, self.T)
 
 
     # Either rotate_target_onto_model or rotate_model_onto_target will reproduce aligned_target.
@@ -302,37 +341,90 @@ class AlignedData(object):
     # if swapped, then use rotate_model_onto_target to reproduce aligned_target
 
     def rotate_target_onto_model(self, rescale=True, apply_mapping=True):
-        target = self.target.positions.copy()
+        included = np.array([i for i in range(np.amax(self.mapping)+1) if i in self.mapping])
+        indices = np.argsort(self.mapping)
+        ordered_included = np.array([len(np.where(self.mapping < i)[0]) for i in self.mapping])  # Keep the same order as self.mapping
+
+        # Rescale, apply mapping to, and tranform the target
         if rescale:
-            target /= self.target_scale
-        if apply_mapping:
-            included = np.array([i for i in range(np.amax(self.mapping)+1) if i in self.mapping])
-            indices = np.argsort(self.mapping)
-            target = target[indices]
+            target = self.target.rescale_edge_lengths(1.0/self.target_scale)
+        else:
+            target = self.target.positions.copy()
+        if self.inverted:
+            target = -target
         if not self.swapped:
+            if apply_mapping:
+                target = target[indices]
             R = self.R
             T = self.T
         else:
+            if apply_mapping:
+                target = target[self.mapping]
             R = np.linalg.inv(self.R)
             T = -self.T
-        return (R * target.T).T + np.tile(T, [target.shape[0], 1])
+        target = target.apply_transformation(R,T)
+
+        # Rescale and apply mapping to the model
+        if rescale:
+            model = self.model.rescale_edge_lengths(1.0/self.model_scale)
+        else:
+            model = self.model.positions.copy()
+        if not self.swapped:
+            # This is weird; we want to include all the atoms even though in this case there are more
+            # atoms in the model and the target. However, only some of the atoms in the model were
+            # mapped to the target, so in order to color-compare the atoms between the targe and model,
+            # we need to put the atoms in the model that were not included in the alignment on the end
+            # of the positions array.
+            not_included = np.array([i for i in range(len(model)) if i not in included])
+            all = np.append(included, not_included)
+            model = model[all]
+        else:
+            model = model
+
+        return target, model
 
 
     def rotate_model_onto_target(self, rescale=True, apply_mapping=True):
-        model = self.model.positions.copy()
+        included = np.array([i for i in range(np.amax(self.mapping)+1) if i in self.mapping])
+        indices = np.argsort(self.mapping)
+        #ordered_included = np.array([len(np.where(self.mapping < i)[0]) for i in self.mapping])  # Keep the same order as self.mapping
+
+        # Rescale, apply mapping to, and tranform the model
         if rescale:
-            model /= self.model_scale
-        if apply_mapping:
-            included = np.array([i for i in range(np.amax(self.mapping)+1) if i in self.mapping])
-            indices = np.argsort(self.mapping)
-            model = model[indices]
+            model = self.model.rescale_edge_lengths(1.0/self.model_scale)
+        else:
+            model = self.model.positions.copy()
+        if self.inverted:
+            model = -model
         if not self.swapped:
+            if apply_mapping:
+                model = model[self.mapping]
             R = np.linalg.inv(self.R)
             T = -self.T
         else:
+            if apply_mapping:
+                model = model[indices]
             R = self.R
             T = self.T
-        return (R * model.T).T + np.tile(T, [model.shape[0], 1])
+        model = model.apply_transformation(R,T)
+
+        # Rescale and apply mapping to the target
+        if rescale:
+            target = self.target.rescale_edge_lengths(1.0/self.target_scale)
+        else:
+            target = self.target.positions.copy()
+        if not self.swapped:
+            target = target
+        else:
+            # This is weird; we want to include all the atoms even though in this case there are more
+            # atoms in the model and the target. However, only some of the atoms in the model were
+            # mapped to the target, so in order to color-compare the atoms between the targe and model,
+            # we need to put the atoms in the model that were not included in the alignment on the end
+            # of the positions array.
+            not_included = np.array([i for i in range(len(model)) if i not in included])
+            all = np.append(included, not_included)
+            target = target[all]
+        return model, target
 
 
     def to_dict(self):
@@ -396,7 +488,7 @@ class Cluster(object):
         self.filename = filename
         if filename is None:
             assert len(symbols) == len(positions)
-            self._positions = np.matrix(positions).copy()
+            self._positions = Positions(positions).copy()
             self._natoms = len(symbols)
             self.atoms = [Atom(symbol=symbol, position=position, id=i) for i,(symbol,position) in enumerate(zip(symbols, self._positions))]
             self.rescaling_constant = rescaling_constant
@@ -405,7 +497,7 @@ class Cluster(object):
             with open(filename) as f:
                 self._natoms = int(f.readline().strip())
                 self.comment = f.readline().strip()
-                self._positions = np.matrix(np.zeros((self.natoms, 3), dtype=float))
+                self._positions = Positions(np.zeros((self.natoms, 3), dtype=float))
                 self.atoms = []
                 self.rescaling_constant = rescaling_constant
                 self.center_atom = center_atom
