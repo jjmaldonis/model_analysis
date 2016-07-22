@@ -116,24 +116,23 @@ class AlignedGroup(object):
         natoms = np.max([a.target.natoms for a in self])
         avg_coords = np.zeros((natoms, 3), dtype=float)
         natoms_per_index = np.zeros((natoms,), dtype=int)
-        for aligned in self.data:
+        for aligned in self:
             if not aligned.successful: continue
-            if not aligned.swapped: continue
-            #positions = aligned.aligned_target.positions
             target, model = aligned.rotate_target_onto_model(apply_mapping=True)
-            #if aligned.inverted:
-            #    positions = positions * -1
-            print(positions)
-            for i, position in enumerate(positions):
-                avg_coords[i,0] += position[0,0]#/nsuccessful
-                avg_coords[i,1] += position[0,1]#/nsuccessful
-                avg_coords[i,2] += position[0,2]#/nsuccessful
+            natoms = min(len(target), len(model))
+            model = model[:natoms]
+            target = target[:natoms]
+            for i, target in enumerate(target):
+                avg_coords[i,0] += target[0,0]
+                avg_coords[i,1] += target[0,1]
+                avg_coords[i,2] += target[0,2]
                 natoms_per_index[i] += 1
-        print(natoms_per_index)
         for i, row in enumerate(avg_coords):
+            if natoms_per_index[i] == 0:
+                natoms_per_index[i] = 1
             row /= natoms_per_index[i]  # This modifies in-place
 
-        self._average = Cluster(symbols=['Si' for i in range(natoms)], positions=avg_coords)
+        self._average = Cluster(symbols=['Si' for i in range(len(avg_coords))], positions=avg_coords)
         return self._average
 
 
@@ -386,6 +385,8 @@ class AlignedData(object):
         else:
             model = model
 
+        if not self.swapped and self.inverted:
+            target, model = -target, -model
         return target, model
 
 
@@ -431,6 +432,9 @@ class AlignedData(object):
             not_included = np.array([i for i in range(len(model)) if i not in included])
             all = np.append(included, not_included)
             target = target[all]
+
+        if self.swapped and self.inverted:
+            target, model = -target, -model
         return model, target
 
 
