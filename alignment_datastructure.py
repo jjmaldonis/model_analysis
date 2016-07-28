@@ -1,11 +1,57 @@
 import os
 import math
+import gzip, json
 import numpy as np
 import scipy.spatial.distance
 from collections import Counter
 import warnings
 
 from lazy_property import lazyproperty
+
+
+
+def load_gzipped_json(filename, verbose=True):
+    with gzip.open(filename, "rb") as f:
+        d = json.loads(f.read().decode("ascii"))
+    print("Loaded gzip successfully.")
+    if verbose:
+        return d
+
+# Use this one externally
+def load_alignment_data(filename, prepend_path='', prepend_model_path='', prepend_target_path='', verbose=True):
+    all_data = load_gzipped_json(filename, verbose)
+    return render_alignment_data(all_data, prepend_path, prepend_model_path, prepend_target_path, verbose)
+
+def render_alignment_data(all_data, prepend_path='', prepend_model_path='', prepend_target_path='', verbose=True):
+    if prepend_path:
+        prepend_model_path = prepend_path
+        prepend_target_path = prepend_path
+    new_data = [None for _ in range(len(all_data))]
+    for i, data in enumerate(all_data):
+        if isinstance(data['model'], str) or isinstance(data['model'], unicode):
+            model_file = os.path.join(prepend_model_path, data['model'])
+            model_coords = None
+        else:
+            model_file = None
+            model_coords = data['model']
+        if isinstance(data['target'], str) or isinstance(data['target'], unicode):
+            target_file = os.path.join(prepend_target_path, data['target'])
+            target_coords = None
+        else:
+            target_file = None
+            target_coords = data['target']
+
+        new_data[i] = AlignedData(
+            R=data['R'], T=data['T'], mapping=data['mapping'], inverted=data['inverted'], error=data['error_lsq'], swapped=data['swapped'],
+            model_file=model_file, model_coords=model_coords, model_symbols=None, model_scale=data['model_rescale'],
+            target_file=target_file, target_coords=target_coords, target_symbols=None, target_scale=data['target_rescale'],
+            aligned_target_coords=data['aligned_target'], aligned_target_symbols=None
+        )
+    new_data = AlignedGroup(new_data)
+    if verbose:
+        print("Rendered data successfully")
+    return new_data
+
 
 
 class Positions(np.matrix):
@@ -44,34 +90,6 @@ class Positions(np.matrix):
             lines.append('{} {} {} {}'.format(Positions.atom_types[i], row[0,0], row[0,1], row[0,2]))
         return '\n'.join(lines)
 
-
-def load_alignment_data(all_data, prepend_path='', prepend_model_path='', prepend_target_path=''):
-    if prepend_path:
-        prepend_model_path = prepend_path
-        prepend_target_path = prepend_path
-    new_data = [None for _ in range(len(all_data))]
-    for i, data in enumerate(all_data):
-        if isinstance(data['model'], str) or isinstance(data['model'], unicode):
-            model_file = os.path.join(prepend_model_path, data['model'])
-            model_coords = None
-        else:
-            model_file = None
-            model_coords = data['model']
-        if isinstance(data['target'], str) or isinstance(data['target'], unicode):
-            target_file = os.path.join(prepend_target_path, data['target'])
-            target_coords = None
-        else:
-            target_file = None
-            target_coords = data['target']
-
-        new_data[i] = AlignedData(
-            R=data['R'], T=data['T'], mapping=data['mapping'], inverted=data['inverted'], error=data['error_lsq'], swapped=data['swapped'],
-            model_file=model_file, model_coords=model_coords, model_symbols=None, model_scale=data['model_rescale'],
-            target_file=target_file, target_coords=target_coords, target_symbols=None, target_scale=data['target_rescale'],
-            aligned_target_coords=data['aligned_target'], aligned_target_symbols=None
-        )
-    new_data = AlignedGroup(new_data)
-    return new_data
 
 
 class AlignedGroup(object):
@@ -122,10 +140,10 @@ class AlignedGroup(object):
             natoms = min(len(target), len(model))
             model = model[:natoms]
             target = target[:natoms]
-            for i, target in enumerate(target):
-                avg_coords[i,0] += target[0,0]
-                avg_coords[i,1] += target[0,1]
-                avg_coords[i,2] += target[0,2]
+            for i, coord in enumerate(target):
+                avg_coords[i,0] += coord[0,0]
+                avg_coords[i,1] += coord[0,1]
+                avg_coords[i,2] += coord[0,2]
                 natoms_per_index[i] += 1
         for i, row in enumerate(avg_coords):
             if natoms_per_index[i] == 0:
@@ -141,25 +159,28 @@ class AlignedGroup(object):
         if not force_update and hasattr(self, '_combined') and self._combined is not None:
             return self._combined
 
+        #              0     1     2     3     4     5    6     7     8     9    10     11    12    13   14    15    16   17    18
         atom_types = ['Si', 'Na', 'Mg', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn', 'B', 'Al', 'Ga', 'C', 'Sn', 'Pb', 'O']
 
         nsuccessful = sum(self.successful)
         coords = []
         for aligned in self.data:
             if not aligned.successful: continue
-            if not aligned.swapped: continue
-            positions = aligned.aligned_target.positions#[aligned.mapping]
-            if aligned.inverted:
-                positions = positions * -1
-            for j, coord in enumerate(positions):
-                coords.append((atom_types[j], coord))
-
+            target, model = aligned.rotate_target_onto_model(apply_mapping=True)
+            natoms = min(len(target), len(model))
+            model = model[:natoms]
+            target = target[:natoms]
+            for i, coord in enumerate(target):
+                #coords.append((atom_types[len(target)], coord))
+                coords.append((atom_types[i], coord))
         if colorize:
             symbols = [sym for sym, coord in coords]
         else:
             symbols = ['Si' for sym, coord in coords]
-        coords = Positions([coord for sym, coord in coords])
-        self._combined = Cluster(symbols=['Si' for i in range(len(coords))], positions=coords)
+        #coords = Positions([coord for sym, coord in coords])
+        coords = np.array([coord for sym, coord in coords])
+        coords = Positions(coords)
+        self._combined = Cluster(symbols=symbols, positions=coords)
         return self._combined
 
 
@@ -540,6 +561,19 @@ class Cluster(object):
     @property
     def positions(self):
         return self._positions
+
+
+    def find_center(self):
+        """This is beautiful."""
+        dist_matrix = scipy.spatial.distance.squareform(scipy.spatial.distance.pdist(self.positions))
+        dist_matrix /= np.mean(dist_matrix)
+        normalized = np.divide(np.std(dist_matrix, axis=0), np.std(dist_matrix))
+        inverse_normalized = np.abs(1.0 - 1.0/normalized)
+        for i, value in enumerate(inverse_normalized):
+            if value > 0.5:
+                return self[i]
+        else:
+            return None
 
 
     def __getitem__(self, index):
