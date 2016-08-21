@@ -13,9 +13,9 @@ from lazy_property import lazyproperty
 def load_gzipped_json(filename, verbose=True):
     with gzip.open(filename, "rb") as f:
         d = json.loads(f.read().decode("ascii"))
-    print("Loaded gzip successfully.")
     if verbose:
-        return d
+        print("Loaded gzip successfully.")
+    return d
 
 # Use this one externally
 def load_alignment_data(filename, prepend_path='', prepend_model_path='', prepend_target_path='', verbose=True):
@@ -71,13 +71,17 @@ class Positions(np.matrix):
         return this.view(Positions)
 
 
-    def to_xyz(self, sym='Si', comment=''):
+    def to_xyz(self, symbols=None, comment=''):
+        if symbols is None:
+            symbols = ['Si' for _ in range(len(self))]
+        elif isinstance(symbols, str):
+                symbols = [symbols for _ in range(len(self))]
         lines = []
         natoms = len(self)
         lines.append(str(natoms))
         lines.append(comment)
-        for row in self:
-            lines.append('{} {} {} {}'.format(sym, row[0], row[1], row[2]))
+        for i, row in enumerate(self):
+            lines.append('{} {} {} {}'.format(symbols[i], row[0,0], row[0,1], row[0,2]))
         return '\n'.join(lines)
 
 
@@ -186,7 +190,7 @@ class AlignedGroup(object):
 
 
 class AlignedData(object):
-    def __init__(self, R, T, mapping, error, inverted, swapped=None,
+    def __init__(self, R, T, mapping, error, inverted, swapped,
                  model_file=None, model_coords=None, model_symbols=None, model_scale=1.0,
                  target_file=None, target_coords=None, target_symbols=None, target_scale=1.0,
                  aligned_target_coords=None, aligned_target_symbols=None):
@@ -202,7 +206,7 @@ class AlignedData(object):
         self.error = error
 
         self._inverted = inverted
-        self._swapped = swapped
+        self._swapped = not swapped # TODO
         self.model_scale = model_scale
         self.target_scale = target_scale
 
@@ -233,28 +237,18 @@ class AlignedData(object):
 
     @property
     def swapped(self):
-        if self._swapped is None:
-            self._swapped = len(self.target.positions) < len(self.model.positions)
         return self._swapped
 
 
-    @lazyproperty
+    @property
     def inverted(self):
-        if self._inverted is None:
-            included = np.array([i for i in range(np.amax(self.mapping)+1) if i in self.mapping])
-            if self.swapped:
-                model = self.model.positions[included]
-            else:
-                model = self.target.positions[included]
-            l2 = Cluster._L2Norm(-model, self.aligned_target.positions)
-            self._inverted = round(l2, 12) == round(self.error, 12)
         return self._inverted
 
 
     @lazyproperty
     def model(self):
+    #def __model(self):
         if self._model_file is None:
-            print(self._model)
             c = Cluster(positions=self._model, symbols=self._model_symbols)
             del self._model
             del self._model_symbols
@@ -266,7 +260,7 @@ class AlignedData(object):
 
     @lazyproperty
     def target(self):
-        swapped = False
+    #def __target(self):
         if self._target_file is None:
             c = Cluster(positions=_target, symbols=self._target_symbols)
             del self._target
@@ -277,23 +271,37 @@ class AlignedData(object):
         return c
 
 
+    #@lazyproperty
+    #def model(self):
+    #    if not self.swapped:
+    #        return self.__model()
+    #    else:
+    #        return self.__target()
+
+
+    #@lazyproperty
+    #def target(self):
+    #    if not self.swapped:
+    #        return self.__target()
+    #    else:
+    #        return self.__model()
+
+
     @property
     def aligned_model(self):
         """Returns the model coordinates that were used during alignment to compare to the rotated/translated target."""
-        included = np.array([i for i in range(np.amax(self.mapping)+1) if i in self.mapping])
-        #indices = np.argsort(self.mapping)
         if self.swapped:
-            #model = self.target.positions.copy()
-            #model = self.target.positions[self.mapping].copy()
-            model = self.target.positions[included].copy()
-            #model = self.target.positions[indices].copy()
+            model = self.target.positions
             scale = self.target_scale
         else:
-            #model = self.model.positions.copy()
-            #model = self.model.positions[self.mapping].copy()
-            model = self.model.positions[included].copy()
-            #model = self.model.positions[indices].copy()
+            model = self.model.positions
             scale = self.model_scale
+        #included = np.array([i for i in range(np.amax(self.mapping)+1) if i in self.mapping])
+        indices = np.argsort(self.mapping)
+        #model = model.copy()
+        #model = model[self.mapping].copy()
+        #model = model[included].copy()  # Use this one
+        model = model[indices].copy()
         model = Cluster._rescale_coordinates(model, 1.0/scale)
         if self.inverted:
             model = -model
@@ -327,35 +335,27 @@ class AlignedData(object):
         # I don't fully understand why I need to use [indices] rather than [included] here.
         # I expected that the input data for the aligned_target coordinates have already been reorderd.
         # I unorder them, however, when I load initialize the datastructure.
-        # There I expected that the target should not need to be reorderd, I should only need to extract out the specific atoms that were used, in order of their occurance in the original file.
+        # Therefore I expected that the target should not need to be reorderd, I should only need to extract out the specific atoms that were used, in order of their occurance in the original file.
         # This doesn't seem to be the case; the target evidently needs to be reorderd...?
         # However, the L2Norm function and the above do not seem to be consistent. Still, the code here gives me the correct results, so I am leaving it.
 
-        #included = np.array([i for i in range(np.amax(self.mapping)+1) if i in self.mapping])
-        indices = np.argsort(self.mapping)
         if not self.swapped:
-            #target = self.target.positions
-            #target = self.target.positions[included]  # I expected this one to be the one we needed to use, but evidently not...?
-            #target = self.target.positions[indices]  # Use this one
-            #target = self.target.positions[self.mapping]
-            if apply_mapping:
-                target = self.target.positions[indices].copy()
-            else:
-                target = self.target.positions.copy()
+            target = self.target.positions.copy()
             scale = self.target_scale
         else:
-            #target = self.model.positions
-            #target = self.model.positions[included]  # I expected this one to be the one we needed to use, but evidently not...?
-            #target = self.model.positions[indices]  # Use this one
-            #target = self.model.positions[self.mapping]
-            if apply_mapping:
-                target = self.model.positions[indices].copy()
-            else:
-                target = self.model.positions.copy()
+            target = self.model.positions.copy()
             scale = self.model_scale
+        if apply_mapping:
+            included = np.array([i for i in range(np.amax(self.mapping)+1) if i in self.mapping])
+            indices = np.argsort(self.mapping)
+            #target = target
+            target = target[included]  # I expected this one to be the one we needed to use, but evidently not...?
+            #target = target[indices]  # Use this one
+            #target = target[self.mapping]
         if rescale:
             target /= scale
-        return target.apply_transformation(self.R, self.T)
+        target = target.apply_transformation(self.R, self.T)
+        return target
 
 
     # Either rotate_target_onto_model or rotate_model_onto_target will reproduce aligned_target.
@@ -555,7 +555,17 @@ class Cluster(object):
 
     @property
     def natoms(self):
-        return self._natoms #len(self.positions)
+        return self._natoms
+
+
+    @property
+    def CN(self):
+        center = self.find_center()
+        if center is None:
+            has_center = False
+        else:
+            has_center = True
+        return self._natoms - has_center
 
 
     @property
@@ -565,15 +575,20 @@ class Cluster(object):
 
     def find_center(self):
         """This is beautiful."""
+        if hasattr(self, '_center'):
+            return self._center
         dist_matrix = scipy.spatial.distance.squareform(scipy.spatial.distance.pdist(self.positions))
         dist_matrix /= np.mean(dist_matrix)
         normalized = np.divide(np.std(dist_matrix, axis=0), np.std(dist_matrix))
         inverse_normalized = np.abs(1.0 - 1.0/normalized)
         for i, value in enumerate(inverse_normalized):
+            # i.e. if one atom's distances to all other atoms is at least 0.5 stdevs more than all the others, return it
             if value > 0.5:
-                return self[i]
+                self._center = self[i]
+                break
         else:
-            return None
+            self._center = None
+        return self._center
 
 
     def __getitem__(self, index):
@@ -612,8 +627,10 @@ class Cluster(object):
 
 
     def vp_index(self):
-        from voropp import compute_index
-        return compute_index(self.filename)
+        if not hasattr(self, '_vp_index'):
+            from voropp import compute_index
+            self._vp_index = compute_index(self.filename)
+        return self._vp_index
 
 
     @staticmethod
